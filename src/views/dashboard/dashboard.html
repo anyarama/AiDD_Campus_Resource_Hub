@@ -1,0 +1,374 @@
+{% extends "layout.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<div class="container py-4 dashboard-shell">
+    <header class="dashboard-hero mb-4" aria-labelledby="dashboard-heading">
+        <div>
+            <p class="eyebrow text-uppercase mb-1">Signed in as <span class="role-chip role-chip--subtle">{{ current_user.role }}</span></p>
+            <h1 class="h2 mb-2" id="dashboard-heading">Welcome back, {{ current_user.name }}.</h1>
+            <p class="text-muted mb-0">Track bookings, respond to requests, keep conversations moving, and stay in sync.</p>
+            {% if calendar_connected %}
+            <div class="calendar-pill mt-3 d-flex align-items-center gap-2" role="status" aria-live="polite">
+                <i class="bi bi-check-circle-fill text-success" aria-hidden="true"></i>
+                <span class="fw-semibold">Calendar connected</span>
+                {% if calendar_last_synced %}
+                <span class="text-muted small">Updated {{ calendar_last_synced|datetime_format('%b %d, %Y %I:%M %p') }}</span>
+                {% endif %}
+                <div class="ms-auto d-flex align-items-center gap-2">
+                    <a href="{{ url_for('dashboard') }}#upcoming-bookings" class="btn btn-link btn-sm px-0">See bookings</a>
+                    <form method="POST" action="{{ url_for('calendar.google_disconnect') }}" class="mb-0">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn btn-outline-secondary btn-sm" aria-label="Disconnect Google Calendar sync">Disconnect</button>
+                    </form>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+        <div class="hero-buttons">
+            <a href="{{ url_for('resource.list_resources') }}" class="btn btn-primary" aria-label="Create a new booking">
+                <i class="bi bi-plus"></i> New booking
+            </a>
+            <a href="{{ url_for('resource.create') }}" class="btn btn-outline-secondary">
+                Add resource
+            </a>
+            {% if current_user.role == 'admin' %}
+            <a href="{{ url_for('admin.dashboard') }}" class="btn btn-outline-secondary">
+                Admin tools
+            </a>
+            {% endif %}
+        </div>
+    </header>
+
+    {% if not calendar_connected %}
+    <section class="calendar-sync-card mb-4" aria-labelledby="calendar-sync-heading">
+        <div>
+            <p class="eyebrow text-uppercase mb-1">Calendar sync</p>
+            <h2 class="h5 mb-1 d-flex align-items-center gap-2" id="calendar-sync-heading">
+                <i class="bi bi-calendar-plus text-primary" aria-hidden="true"></i>
+                Connect your calendar
+            </h2>
+            <p class="text-muted mb-2 small">
+                Push approved bookings straight to Google Calendar or download iCal from any booking.
+            </p>
+        </div>
+        <div class="calendar-sync-actions">
+            <a href="{{ url_for('calendar.google_connect', next=url_for('dashboard')) }}" class="btn btn-primary btn-sm" aria-label="Connect Google Calendar">
+                Connect Google Calendar
+            </a>
+            <a href="{{ url_for('dashboard') }}#upcoming-bookings" class="btn btn-outline-secondary btn-sm">
+                See bookings
+            </a>
+        </div>
+    </section>
+    {% endif %}
+
+    <section class="mb-4" aria-labelledby="summary-heading">
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+            <h2 class="h5 mb-0" id="summary-heading">At a glance</h2>
+        </div>
+        <div class="stat-grid">
+            <a class="stat-card stat-card--link" href="{{ url_for('booking.my_bookings') }}" aria-label="View all my bookings">
+                <p class="stat-label">My bookings</p>
+                <p class="stat-value">{{ my_bookings|length }}</p>
+                <span class="stat-hint text-muted">Upcoming + history</span>
+            </a>
+            <a class="stat-card stat-card--link" href="{{ url_for('message.list_threads') }}" aria-label="View recent messages">
+                <p class="stat-label">Messages</p>
+                <p class="stat-value">{{ total_message_threads }}</p>
+                <span class="stat-hint text-muted">Recent threads</span>
+            </a>
+            {% if can_manage_resources %}
+            <a class="stat-card stat-card--link" href="{{ url_for('resource.list_resources', owner='me') }}" aria-label="Manage my resources">
+                <p class="stat-label">Resources I manage</p>
+                <p class="stat-value">{{ my_resources|length }}</p>
+                <span class="stat-hint text-muted">Draft + published</span>
+            </a>
+            <a class="stat-card stat-card--link" href="{{ url_for('booking.review_requests') }}" aria-label="Review booking requests for my resources">
+                <p class="stat-label">Requests to review</p>
+                <p class="stat-value">{{ resource_bookings|length }}</p>
+                <span class="stat-hint text-muted">Pending approvals</span>
+            </a>
+            {% endif %}
+        </div>
+    </section>
+
+    {% if my_waitlist %}
+    <section class="mb-4" aria-labelledby="waitlist-heading">
+        <div class="dashboard-card">
+            <div class="card-head">
+                <h2 class="h5 mb-0" id="waitlist-heading">
+                    <i class="bi bi-bell-fill text-warning"></i> Active Waitlist
+                </h2>
+                <span class="text-muted small">{{ my_waitlist|length }} pending {{ 'request' if my_waitlist|length == 1 else 'requests' }}</span>
+            </div>
+            <p class="text-muted mb-3">You'll be automatically booked when these slots become available.</p>
+            <ul class="list-group list-group-flush">
+                {% for item in my_waitlist %}
+                <li class="list-group-item">
+                    <div class="d-flex justify-content-between align-items-start gap-3">
+                        <div>
+                            <a href="{{ url_for('resource.detail', resource_id=item.entry.resource_id) }}" class="text-decoration-none">
+                                <strong>{{ item.resource_title }}</strong>
+                            </a>
+                            {% if item.resource %}
+                            <div class="text-muted small">{{ item.resource.category or 'General' }} &middot; {{ item.resource.location or 'Location TBD' }}</div>
+                            {% endif %}
+                            <div class="text-muted small mt-1">
+                                <i class="bi bi-calendar-event"></i> {{ item.entry.start_datetime|datetime_format }} &ndash; {{ item.entry.end_datetime|datetime_format }}
+                            </div>
+                            <div class="text-muted small">
+                                <i class="bi bi-clock"></i> Added {{ item.entry.created_at|relative_time }}
+                            </div>
+                        </div>
+                        <form method="POST" action="{{ url_for('booking.cancel_waitlist', entry_id=item.entry.entry_id) }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Remove from waitlist?')">
+                                <i class="bi bi-x-circle"></i> Remove
+                            </button>
+                        </form>
+                    </div>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </section>
+    {% endif %}
+
+    <section class="mb-4" aria-labelledby="bookings-messages-heading">
+        <h2 class="visually-hidden" id="bookings-messages-heading">Bookings and messages</h2>
+        <div class="row g-4 align-items-stretch">
+            <div class="col-xl-7" id="upcoming-bookings">
+                <div class="dashboard-card h-100">
+                    <div class="card-head">
+                        <h3 class="h5 mb-0">Upcoming bookings</h3>
+                        <a href="{{ url_for('booking.my_bookings') }}" class="text-muted small" aria-label="View all bookings">View all bookings</a>
+                    </div>
+                    {% if my_bookings %}
+                    <ul class="list-group list-group-flush">
+                        {% for booking in my_bookings[:5] %}
+                        <li class="list-group-item">
+                            <div class="d-flex justify-content-between align-items-start gap-3">
+                                <div>
+                                    <a href="{{ url_for('booking.detail', booking_id=booking.booking_id) }}" class="text-decoration-none">
+                                        <strong>{{ booking_details[booking.booking_id].title }}</strong>
+                                    </a>
+                                    <div class="text-muted small">
+                                        {{ booking.start_datetime|datetime_format }} &ndash;
+                                        {{ booking.end_datetime|datetime_format }}
+                                    </div>
+                                </div>
+                                <span class="badge status-{{ booking.status }}" aria-label="Status {{ booking.status|upper }}">{{ booking.status|upper }}</span>
+                            </div>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    {% if my_bookings|length > 5 %}
+                    <div class="p-3 text-center border-top">
+                        <a href="{{ url_for('booking.my_bookings') }}" class="btn btn-sm btn-outline-secondary">View all {{ my_bookings|length }} bookings</a>
+                    </div>
+                    {% endif %}
+                    {% else %}
+                    <p class="empty-state text-muted mb-0">No bookings yet. Start by <a href="{{ url_for('resource.list_resources') }}">browsing resources</a>.</p>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="col-xl-5">
+                <div class="dashboard-card h-100" aria-labelledby="messages-preview-heading">
+                    <div class="card-head">
+                        <h3 class="h5 mb-0" id="messages-preview-heading">Messages</h3>
+                        <a href="{{ url_for('message.list_threads') }}" class="text-muted small" aria-label="View all messages">View all messages</a>
+                    </div>
+                    {% if recent_message_threads %}
+                    <ul class="list-group list-group-flush">
+                        {% for thread in recent_message_threads %}
+                        <li class="list-group-item">
+                            <div class="d-flex justify-content-between gap-3">
+                                <div>
+                                    <p class="fw-semibold mb-1">{{ thread.other_user_name }}</p>
+                                    <p class="text-muted small mb-1">
+                                        {% if thread.resource_title %}
+                                        <i class="bi bi-box-seam" aria-hidden="true"></i> {{ thread.resource_title }}
+                                        {% else %}
+                                        <span class="text-muted">General chat</span>
+                                        {% endif %}
+                                    </p>
+                                    <p class="message-snippet small mb-0 text-muted">{{ thread.last_message|default('Conversation started')|truncate(90) }}</p>
+                                </div>
+                                <time class="text-muted small text-end" datetime="{{ thread.last_message_time }}">{{ thread.last_message_time|datetime_format('%b %d, %I:%M %p') if thread.last_message_time else '—' }}</time>
+                            </div>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    {% else %}
+                    <p class="empty-state text-muted mb-0">No conversations yet. <a href="{{ url_for('message.list_threads') }}">View the inbox</a> to start chatting.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </section>
+
+    {% set show_listing_panels = can_manage_resources %}
+    {% if show_listing_panels %}
+    <section class="mb-4" aria-labelledby="listings-heading">
+        <div class="row g-4">
+            <div class="col-lg-6">
+                <div class="dashboard-card h-100">
+                    <div class="card-head">
+                        <h3 class="h5 mb-0" id="listings-heading">My listings</h3>
+                        {% if my_resources %}
+                        <a href="{{ url_for('resource.list_resources', owner='me') }}" class="text-muted small">View all</a>
+                        {% else %}
+                        <a href="{{ url_for('resource.create') }}" class="text-muted small">Create listing</a>
+                        {% endif %}
+                    </div>
+                    {% if listings_preview %}
+                    <ul class="list-group list-group-flush">
+                        {% for resource in listings_preview %}
+                        <li class="list-group-item">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <a href="{{ url_for('resource.detail', resource_id=resource.resource_id) }}" class="text-decoration-none">
+                                        <strong>{{ resource.title }}</strong>
+                                    </a>
+                                    <div class="text-muted small">
+                                        {{ resource.category }} • {{ resource.status|capitalize }}
+                                    </div>
+                                </div>
+                                <a href="{{ url_for('resource.edit', resource_id=resource.resource_id) }}" class="btn btn-link btn-sm px-0" aria-label="Edit {{ resource.title }}">Edit</a>
+                            </div>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    {% if my_resources|length > 3 %}
+                    <div class="p-3 text-center border-top">
+                        <a href="{{ url_for('resource.list_resources', owner='me') }}" class="btn btn-sm btn-outline-secondary">View all {{ my_resources|length }} resources</a>
+                    </div>
+                    {% endif %}
+                    {% elif can_manage_resources %}
+                    <p class="empty-state text-muted mb-0">No listings yet. <a href="{{ url_for('resource.create') }}">Create your first listing</a>.</p>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="dashboard-card h-100" id="resource-requests">
+                    <div class="card-head">
+                        <div>
+                            <h3 class="h5 mb-0">Requests for my resources</h3>
+                            <span class="text-muted small">{{ resource_bookings|length }} pending</span>
+                        </div>
+                        <a href="{{ url_for('booking.review_requests') }}" class="text-muted small">View all</a>
+                    </div>
+                    {% if resource_bookings %}
+                    <ul class="list-group list-group-flush">
+                        {% for booking in resource_bookings[:3] %}
+                        <li class="list-group-item">
+                            <div class="d-flex justify-content-between align-items-start gap-3">
+                                <div>
+                                    <a href="{{ url_for('booking.detail', booking_id=booking.booking_id) }}" class="text-decoration-none">
+                                        <strong>{{ booking_details[booking.booking_id].title }}</strong>
+                                    </a>
+                                    <div class="text-muted small mb-1">
+                                        Requested by {{ booking_details[booking.booking_id].requester_name }}
+                                    </div>
+                                    <div class="text-muted small">
+                                        {{ booking.start_datetime|datetime_format }} &ndash;
+                                        {{ booking.end_datetime|datetime_format }}
+                                    </div>
+                                </div>
+                                <div class="text-end">
+                                    <span class="badge status-{{ booking.status }}" aria-label="Status {{ booking.status|upper }}">{{ booking.status|upper }}</span>
+                                    <div>
+                                        <a class="btn btn-link btn-sm px-0" href="{{ url_for('booking.detail', booking_id=booking.booking_id) }}">Open</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    {% if resource_bookings|length > 3 %}
+                    <div class="p-3 text-center border-top">
+                        <a href="{{ url_for('booking.review_requests') }}" class="btn btn-sm btn-outline-secondary">View all {{ resource_bookings|length }} requests</a>
+                    </div>
+                    {% endif %}
+                    {% else %}
+                    <p class="empty-state text-muted mb-0">No pending bookings for your resources.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </section>
+    {% endif %}
+
+    {% if not can_manage_resources and booking_stats.total > 0 %}
+    <section class="mb-4" aria-labelledby="activity-summary-heading">
+        <h2 class="h5 mb-3" id="activity-summary-heading">Your activity summary</h2>
+        <div class="row g-3">
+            <div class="col-md-3">
+                <div class="stat-mini-card">
+                    <div class="stat-mini-icon">
+                        <i class="bi bi-calendar-check"></i>
+                    </div>
+                    <div>
+                        <div class="stat-mini-value">{{ booking_stats.completed }}</div>
+                        <div class="stat-mini-label">Completed</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-mini-card">
+                    <div class="stat-mini-icon">
+                        <i class="bi bi-hourglass-split"></i>
+                    </div>
+                    <div>
+                        <div class="stat-mini-value">{{ booking_stats.pending }}</div>
+                        <div class="stat-mini-label">Awaiting approval</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-mini-card">
+                    <div class="stat-mini-icon">
+                        <i class="bi bi-arrow-up-circle"></i>
+                    </div>
+                    <div>
+                        <div class="stat-mini-value">{{ booking_stats.upcoming }}</div>
+                        <div class="stat-mini-label">Upcoming</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-mini-card {% if most_used_category %}stat-mini-card--accent{% endif %}">
+                    <div class="stat-mini-icon">
+                        <i class="bi bi-star"></i>
+                    </div>
+                    <div>
+                        <div class="stat-mini-value">{{ most_used_category or '—' }}</div>
+                        <div class="stat-mini-label">Top category</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    {% endif %}
+</div>
+{% if staff_resource_usage %}
+<div class="container pb-4">
+    <div class="dashboard-card">
+        <div class="card-head">
+            <h3 class="h5 mb-0">Top performing resources</h3>
+            <span class="text-muted small">Bookings per resource (all statuses)</span>
+        </div>
+        <ul class="list-group list-group-flush">
+            {% for row in staff_resource_usage %}
+            <li class="list-group-item d-flex justify-content-between">
+                <span>{{ row.title }}</span>
+                <span class="badge bg-light text-dark">{{ row.total }}</span>
+            </li>
+            {% else %}
+            <li class="list-group-item text-muted">No bookings yet. Promote your listings to start seeing insights.</li>
+            {% endfor %}
+        </ul>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

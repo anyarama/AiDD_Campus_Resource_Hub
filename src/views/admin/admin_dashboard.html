@@ -1,0 +1,348 @@
+{% extends "layout.html" %}
+{% block title %}Admin Dashboard{% endblock %}
+{% block content %}
+<div class="container py-4 admin-shell" data-admin-dashboard>
+    <div class="dashboard-hero mb-4 admin-hero">
+        <div class="hero-content">
+            <p class="eyebrow text-uppercase mb-1">Campus systems overview</p>
+            <h1 class="h2 mb-2">Admin control center</h1>
+            <p class="text-muted mb-0">
+                {{ insights.approval_rate_pct|round(0) }}% approval rate across {{ insights.booking_status_total }} booking decisions.
+                Keep queues light, resources discoverable, and moderation proactive.
+            </p>
+        </div>
+        <div class="hero-meta">
+            <div class="hero-pill" aria-label="Active resources">
+                <span class="hero-pill__label">Resources live</span>
+                <strong>{{ stats.total_resources }}</strong>
+            </div>
+            <div class="hero-pill" aria-label="Active users">
+                <span class="hero-pill__label">Active users</span>
+                <strong>{{ stats.total_users }}</strong>
+            </div>
+        </div>
+        <div class="hero-buttons">
+            <a href="{{ url_for('admin.manage_users') }}" class="btn btn-primary"><i class="bi bi-people"></i> Users</a>
+            <a href="{{ url_for('admin.manage_resources') }}" class="btn btn-outline-secondary"><i class="bi bi-box"></i> Resources</a>
+            <a href="{{ url_for('admin.manage_bookings') }}" class="btn btn-outline-secondary"><i class="bi bi-calendar-event"></i> Bookings</a>
+            <a href="{{ url_for('admin.manage_reviews') }}" class="btn btn-outline-secondary"><i class="bi bi-star"></i> Reviews</a>
+            <a href="{{ url_for('admin.moderation_reports') }}" class="btn btn-outline-secondary"><i class="bi bi-flag"></i> Reports</a>
+        </div>
+    </div>
+
+    <section class="insight-grid mb-4" aria-label="Operational snapshot">
+        <article class="insight-card insight-card--accent">
+            <header>
+                <p class="insight-label">Approvals queue</p>
+                <a class="ghost-link" href="{{ url_for('admin.manage_bookings') }}">Open bookings <i class="bi bi-arrow-up-right"></i></a>
+            </header>
+            <p class="insight-value">{{ stats.pending_bookings }}</p>
+            <p class="insight-subtext text-muted mb-0">
+                {% if stats.pending_bookings %}
+                    Oldest request {{ insights.queue_age_text or 'recently' }}
+                {% else %}
+                    Queue is clear—nice work.
+                {% endif %}
+            </p>
+        </article>
+        <article class="insight-card">
+            <header>
+                <p class="insight-label">Draft resources</p>
+                <a class="ghost-link" href="{{ url_for('admin.manage_resources', status='draft') }}">Review drafts <i class="bi bi-arrow-up-right"></i></a>
+            </header>
+            <p class="insight-value">{{ resource_status.draft }}</p>
+            <p class="insight-subtext text-muted mb-0">
+                {{ insights.publish_rate_pct|round(0) }}% of inventory is live. Keep listings fresh.
+            </p>
+        </article>
+        <a href="{{ url_for('admin.manage_users') }}" class="insight-card insight-card--link">
+            <header>
+                <p class="insight-label">New registrations</p>
+                <span class="trend-pill {% if insights.user_delta >= 0 %}trend-pill--up{% else %}trend-pill--down{% endif %}">
+                    {% if insights.user_delta >= 0 %}+{% endif %}{{ insights.user_delta }}
+                    {% if insights.user_delta_pct is not none %} ({{ insights.user_delta_pct|round(1) }}%){% endif %}
+                </span>
+            </header>
+            <p class="insight-value">{{ insights.monthly_new_users }}</p>
+            <p class="insight-subtext text-muted mb-0">Compared with last month</p>
+        </a>
+        <a href="{{ url_for('admin.manage_bookings') }}" class="insight-card insight-card--link">
+            <header>
+                <p class="insight-label">Decision health</p>
+                <span class="badge bg-light text-dark">{{ insights.booking_status_total }} reviews</span>
+            </header>
+            <p class="insight-value">{{ insights.approval_rate_pct|round(0) }}%</p>
+            <p class="insight-subtext text-muted mb-0">Approvals that become completed bookings</p>
+        </a>
+    </section>
+
+    <div class="row g-4 mb-4">
+        <div class="col-lg-6">
+            <div class="dashboard-card h-100">
+                <div class="card-head">
+                    <div>
+                        <h3 class="h5 mb-0">Resource lifecycle</h3>
+                        <span class="text-muted small">Inventory coverage</span>
+                    </div>
+                    <span class="pill-indicator">{{ insights.publish_rate_pct|round(0) }}% live</span>
+                </div>
+                <ul class="progress-list mb-0">
+                    {% for entry in chart_data.resourceStatus %}
+                    {% set pct = (entry.value / stats.total_resources * 100) if stats.total_resources else 0 %}
+                    <li class="progress-list__item">
+                        <div class="progress-list__label">{{ entry.label }}</div>
+                        <div class="progress flex-grow-1">
+                            <div class="progress-bar" role="progressbar" style="width: {{ pct }}%" aria-valuenow="{{ entry.value }}" aria-valuemin="0" aria-valuemax="{{ stats.total_resources }}"></div>
+                        </div>
+                        <span class="progress-list__value">{{ entry.value }}</span>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="dashboard-card h-100">
+                <div class="card-head">
+                    <div>
+                        <h3 class="h5 mb-0">People mix</h3>
+                        <span class="text-muted small">{{ stats.total_users }} active accounts</span>
+                    </div>
+                </div>
+                <ul class="progress-list progress-list--compact">
+                    {% for entry in chart_data.roleMix %}
+                    {% set pct = (entry.value / stats.total_users * 100) if stats.total_users else 0 %}
+                    <li class="progress-list__item">
+                        <div>
+                            <div class="progress-list__label mb-0">{{ entry.label }}</div>
+                            <p class="text-muted small mb-0">{{ pct|round(1) }}% of community</p>
+                        </div>
+                        <span class="badge bg-light text-dark text-uppercase">{{ entry.value }}</span>
+                    </li>
+                    {% endfor %}
+                </ul>
+                <div class="chart-wrapper mt-3">
+                    <canvas id="roleMixChart" height="220" role="img" aria-label="Doughnut chart showing user roles"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4 mb-4 analytics-grid">
+        <div class="col-xl-7">
+            <div class="dashboard-card chart-card h-100">
+                <div class="card-head">
+                    <div>
+                        <h3 class="h5 mb-0">Booking pulse</h3>
+                        <span class="text-muted small">Requests submitted (6 months)</span>
+                    </div>
+                    <span class="trend-pill {% if insights.booking_delta >= 0 %}trend-pill--up{% else %}trend-pill--down{% endif %}">
+                        {% if insights.booking_delta >= 0 %}+{% endif %}{{ insights.booking_delta }}
+                        {% if insights.booking_delta_pct is not none %} ({{ insights.booking_delta_pct|round(1) }}%){% endif %}
+                    </span>
+                </div>
+                <canvas id="bookingTrendChart" height="280" role="img" aria-label="Line chart showing monthly booking submissions"></canvas>
+            </div>
+        </div>
+        <div class="col-xl-5">
+            <div class="dashboard-card chart-card h-100">
+                <div class="card-head">
+                    <div>
+                        <h3 class="h5 mb-0">Registration flow</h3>
+                        <span class="text-muted small">Rolling 6 months</span>
+                    </div>
+                </div>
+                <canvas id="userGrowthChart" height="280" role="img" aria-label="Bar chart showing recent user registrations"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4 mb-4 analytics-grid">
+        <div class="col-xl-6">
+            <div class="dashboard-card chart-card h-100">
+                <div class="card-head">
+                    <div>
+                        <h3 class="h5 mb-0">Demand hotspots</h3>
+                        <span class="text-muted small">Bookings by department</span>
+                    </div>
+                </div>
+                <div class="chart-wrapper mb-3">
+                    <canvas id="departmentUsageChart" height="260" role="img" aria-label="Bar chart showing departmental booking counts"></canvas>
+                </div>
+                {% if department_usage %}
+                <div class="table-responsive small-table">
+                    <table class="table align-middle mb-0">
+                        <tbody>
+                            {% for row in department_usage %}
+                            {% set pct = (row.total / department_total * 100) if department_total else 0 %}
+                            <tr>
+                                <td>
+                                    <strong>{{ row.department }}</strong>
+                                    <div class="mini-meter" aria-hidden="true">
+                                        <span style="width: {{ pct }}%"></span>
+                                    </div>
+                                </td>
+                                <td class="text-end text-muted small">{{ row.total }} bookings</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="empty-state text-muted mb-0">No departmental breakdown yet.</p>
+                {% endif %}
+            </div>
+        </div>
+        <div class="col-xl-3">
+            <div class="dashboard-card chart-card h-100">
+                <div class="card-head">
+                    <div>
+                        <h3 class="h5 mb-0">Top categories</h3>
+                        <span class="text-muted small">Most booked</span>
+                    </div>
+                </div>
+                <canvas id="categoryChart" height="260" role="img" aria-label="Horizontal bar chart showing resource categories"></canvas>
+            </div>
+        </div>
+        <div class="col-xl-3">
+            <div class="dashboard-card h-100">
+                <div class="card-head">
+                    <div>
+                        <h3 class="h5 mb-0">Decision breakdown</h3>
+                        <span class="text-muted small">Current year-to-date</span>
+                    </div>
+                </div>
+                {% if chart_data.bookingStatus %}
+                <ul class="progress-list progress-list--stacked">
+                    {% for row in chart_data.bookingStatus %}
+                    {% set pct = (row.value / insights.booking_status_total * 100) if insights.booking_status_total else 0 %}
+                    <li class="progress-list__item">
+                        <div class="progress-list__label">{{ row.label }}</div>
+                        <div class="progress flex-grow-1">
+                            <div class="progress-bar" role="progressbar" style="width: {{ pct }}%" aria-valuenow="{{ row.value }}" aria-valuemin="0" aria-valuemax="{{ insights.booking_status_total }}"></div>
+                        </div>
+                        <span class="progress-list__value">{{ row.value }}</span>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p class="empty-state text-muted mb-0">Not enough booking decisions yet.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-xl-6">
+            <div class="dashboard-card h-100">
+                <div class="card-head">
+                    <div>
+                        <h3 class="h5 mb-0">Bookings waiting on action</h3>
+                        <span class="text-muted small">Oldest request {{ insights.queue_age_text or 'recently' }}</span>
+                    </div>
+                    <a href="{{ url_for('admin.manage_bookings') }}" class="ghost-link">Jump to queue</a>
+                </div>
+                {% if pending_bookings %}
+                <div class="table-responsive">
+                    <table class="table align-middle">
+                        <thead>
+                            <tr>
+                                <th scope="col" style="width: 60px;">ID</th>
+                                <th scope="col">Resource</th>
+                                <th scope="col" style="width: 140px;">Requested</th>
+                                <th scope="col" class="text-end" style="width: 140px;">Starts</th>
+                                <th scope="col" class="text-end" style="width: 100px;">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for booking in pending_bookings %}
+                            {% set resource = resource_lookup.get(booking.resource_id) %}
+                            <tr>
+                                <td>#{{ booking.booking_id }}</td>
+                                <td>
+                                    {% if resource %}
+                                        <strong>{{ resource.title }}</strong><br>
+                                        <span class="text-muted small">#{{ resource.resource_id }}</span>
+                                    {% else %}
+                                        Resource #{{ booking.resource_id }}
+                                    {% endif %}
+                                </td>
+                                <td class="text-muted small">{{ booking.created_at|datetime_format('%b %d, %I:%M %p') }}</td>
+                                <td class="text-end">{{ booking.start_datetime|datetime_format('%b %d, %I:%M %p') }}</td>
+                                <td class="text-end">
+                                    <a href="{{ url_for('booking.detail', booking_id=booking.booking_id) }}" class="btn btn-sm btn-outline-secondary">Review</a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="empty-state text-muted mb-0">No pending bookings right now.</p>
+                {% endif %}
+            </div>
+        </div>
+        <div class="col-xl-3">
+            <div class="dashboard-card h-100">
+                <div class="card-head">
+                    <div>
+                        <h3 class="h5 mb-0">Draft queue</h3>
+                        <span class="text-muted small">Prioritize what matters</span>
+                    </div>
+                    <a href="{{ url_for('admin.manage_resources', status='draft') }}" class="ghost-link">View all <i class="bi bi-arrow-up-right"></i></a>
+                </div>
+                {% if draft_resources %}
+                <ul class="stacked-list">
+                    {% for resource in draft_resources %}
+                    <li class="stacked-list__item">
+                        <div class="flex-grow-1">
+                            <strong class="d-block mb-1">{{ resource.title }}</strong>
+                            <p class="text-muted small mb-1">{{ resource.location or 'Location TBD' }}</p>
+                            <span class="badge bg-light text-dark">{{ resource.category or 'Uncategorized' }}</span>
+                        </div>
+                        <span class="text-muted small text-nowrap">{{ resource.created_at|datetime_format('%b %d') }}</span>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p class="empty-state text-muted mb-0">No drafts awaiting review.</p>
+                {% endif %}
+            </div>
+        </div>
+        <div class="col-xl-3">
+            <div class="dashboard-card h-100">
+                <div class="card-head">
+                    <div>
+                        <h3 class="h5 mb-0">Latest sign-ups</h3>
+                        <span class="text-muted small">Freshest accounts</span>
+                    </div>
+                    <a href="{{ url_for('admin.manage_users') }}" class="ghost-link">See all</a>
+                </div>
+                {% if users %}
+                <ul class="stacked-list stacked-list--compact">
+                    {% for user in users %}
+                    <li class="stacked-list__item">
+                        <div class="flex-grow-1">
+                            <strong class="d-block mb-1">{{ user.name }}</strong>
+                            <p class="text-muted small mb-0">{{ user.email }}</p>
+                        </div>
+                        <span class="badge bg-light text-dark text-uppercase text-nowrap">{{ user.role }}</span>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p class="empty-state text-muted mb-0">No new sign-ups recorded.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+    {{ super() }}
+    <script id="admin-chart-data" type="application/json">
+        {{ chart_data|default({})|tojson }}
+    </script>
+    <script src="{{ url_for('static', filename='js/vendor/chart.umd.min.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='js/admin_dashboard.js') }}" defer></script>
+{% endblock %}

@@ -1,0 +1,107 @@
+{% extends "layout.html" %}
+{% block title %}Review Booking Requests{% endblock %}
+{% block content %}
+<div class="container py-4" id="main-content">
+    <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
+        <div>
+            <p class="eyebrow text-uppercase mb-1 text-muted">Resource requests</p>
+            <h1 class="h3 mb-2">Review booking requests</h1>
+            <p class="text-muted mb-0">
+                Manage approvals for the resources you own. Pending right now: <strong>{{ total_pending }}</strong>.
+            </p>
+        </div>
+        <div class="text-end">
+            <a href="{{ url_for('resource.list_resources', owner='me') }}" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-box-arrow-up-right"></i> My resources
+            </a>
+        </div>
+    </div>
+
+    {% if not owns_resources %}
+    <div class="alert alert-info mb-4">
+        You do not have any published resources yet. Add a resource to start receiving booking requests.
+    </div>
+    {% endif %}
+
+    <div class="mb-3">
+        <div class="btn-group" role="group" aria-label="Filter booking statuses">
+            {% for status in valid_filters %}
+            <a
+                class="btn btn-outline-secondary {% if selected_status == status %}active{% endif %}"
+                href="{{ url_for('booking.review_requests', status=status if status != 'all' else None) }}">
+                {{ status.title() if status != 'all' else 'All' }}
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+
+    {% if bookings %}
+    <div class="dashboard-card">
+        <div class="table-responsive">
+            <table class="table align-middle">
+                <thead>
+                    <tr>
+                        <th scope="col">Resource</th>
+                        <th scope="col">Requester</th>
+                        <th scope="col">Schedule</th>
+                        <th scope="col">Status</th>
+                        <th scope="col" class="text-end">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for booking in bookings %}
+                    <tr>
+                        <td>
+                            <strong>{{ booking.resource_title }}</strong><br>
+                            <span class="text-muted small">{{ booking.resource_category or 'General' }} &middot; {{ booking.resource_location or 'Location TBD' }}</span>
+                        </td>
+                        <td>
+                            <div>{{ booking.requester_name }}</div>
+                            <div class="text-muted small">{{ booking.requester_email }}</div>
+                        </td>
+                        <td class="text-nowrap">
+                            <div>{{ booking.start_datetime|datetime_format }}</div>
+                            <div class="text-muted small">{{ booking.end_datetime|datetime_format }}</div>
+                        </td>
+                        <td>
+                            <span class="badge status-{{ booking.status }}">{{ booking.status|upper }}</span>
+                        </td>
+                        <td class="text-end">
+                            <div class="d-flex flex-column gap-2 align-items-end">
+                                {% if booking.status == 'pending' %}
+                                <form method="POST" action="{{ url_for('booking.approve', booking_id=booking.booking_id) }}" class="w-100">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <input type="hidden" name="next" value="{{ url_for('booking.review_requests', status=selected_status if selected_status != 'all' else None) }}">
+                                    <button type="submit" class="btn btn-success btn-sm w-100">
+                                        <i class="bi bi-check-circle"></i> Approve
+                                    </button>
+                                </form>
+                                <form method="POST" action="{{ url_for('booking.reject', booking_id=booking.booking_id) }}" class="w-100">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <input type="hidden" name="next" value="{{ url_for('booking.review_requests', status=selected_status if selected_status != 'all' else None) }}">
+                                    <button type="submit" class="btn btn-outline-danger btn-sm w-100">
+                                        <i class="bi bi-x-circle"></i> Reject
+                                    </button>
+                                </form>
+                                {% else %}
+                                <p class="text-muted small mb-0">No action needed.</p>
+                                {% endif %}
+                                <a class="btn btn-link btn-sm px-0" href="{{ url_for('booking.detail', booking_id=booking.booking_id) }}">
+                                    View booking
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% else %}
+    <div class="dashboard-card p-4 text-center text-muted">
+        <p class="mb-2 fw-semibold">Nothing to review right now.</p>
+        <p class="mb-0">Switch filters above to see past requests.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

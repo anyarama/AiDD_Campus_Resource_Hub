@@ -1,0 +1,75 @@
+{% extends "layout.html" %}
+{% block title %}Conversation{% endblock %}
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="dashboard-card">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h2 class="mb-0">Chat with {{ other_user.name }}</h2>
+                    <a href="{{ url_for('message.list_threads') }}" class="btn btn-outline-secondary btn-sm">
+                        <i class="bi bi-arrow-left"></i> Back to Messages
+                    </a>
+                </div>
+                {% if resource %}
+                <p class="text-muted mb-3">
+                    <i class="bi bi-box"></i>
+                    Regarding <a href="{{ url_for('resource.detail', resource_id=resource.resource_id) }}">{{ resource.title }}</a>
+                </p>
+                {% endif %}
+                <div class="message-thread mb-3"
+                     data-message-thread="true"
+                     data-thread-id="{{ thread_id }}"
+                     data-feed-url="{{ url_for('message.thread_feed', thread_id=thread_id) }}"
+                     data-current-user="{{ current_user.user_id }}"
+                     data-last-message-id="{{ last_message_id }}">
+                    {% if messages %}
+                        {% for message in messages %}
+                        <div class="message-item {% if message.sender_id == current_user.user_id %}sent{% else %}received{% endif %}"
+                             data-message-id="{{ message.message_id }}">
+                            <div class="message-meta">
+                                <strong>{% if message.sender_id == current_user.user_id %}You{% else %}{{ other_user.name }}{% endif %}</strong>
+                                <span class="text-muted">{{ message.timestamp|datetime_format }}</span>
+                            </div>
+                            <p class="mb-1">{{ message.content }}</p>
+                            {% if current_user.user_id != message.sender_id %}
+                            <div>
+                                <button class="btn btn-link btn-sm text-warning p-0" type="button" data-bs-toggle="collapse" data-bs-target="#reportMessage{{ message.message_id }}" aria-expanded="false" aria-controls="reportMessage{{ message.message_id }}">
+                                    <i class="bi bi-flag"></i> Report
+                                </button>
+                                <div class="collapse mt-2" id="reportMessage{{ message.message_id }}">
+                                    <form method="POST" action="{{ url_for('message.flag_message', message_id=message.message_id) }}">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <textarea class="form-control form-control-sm mb-2" name="reason" rows="2" placeholder="Describe the issue" required></textarea>
+                                        <button type="submit" class="btn btn-sm btn-warning">Submit Report</button>
+                                    </form>
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="message-empty text-muted text-center py-4">No messages yet. Start the conversation below.</div>
+                    {% endif %}
+                </div>
+                <form method="POST"
+                      id="replyForm"
+                      data-message-reply-form="true"
+                      action="{{ url_for('message.reply', thread_id=thread_id) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="mb-3">
+                        <label for="content" class="form-label">Reply</label>
+                        <textarea class="form-control" id="content" name="content" rows="3" required></textarea>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-send"></i> Send Reply
+                        </button>
+                        <a href="{{ url_for('message.list_threads') }}" class="btn btn-outline-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

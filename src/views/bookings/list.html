@@ -1,0 +1,80 @@
+{% extends "layout.html" %}
+{% block title %}Browse Resources{% endblock %}
+{% block content %}
+<div class="container py-4">
+    <h1 class="mb-4">Browse Resources</h1>
+    <div class="search-container">
+        <form method="GET" id="resource-search-form">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <input type="text" class="form-control" name="keyword" placeholder="Search by keyword" value="{{ selected_keyword }}">
+                </div>
+                <div class="col-md-3">
+                    <select class="form-select" name="category">
+                        <option value="">All Categories</option>
+                        {% for cat in categories %}
+                        <option value="{{ cat }}" {% if cat == selected_category %}selected{% endif %}>{{ cat }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <input type="text" class="form-control" name="location" placeholder="Location" value="{{ selected_location }}">
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="bi bi-search"></i> Search
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+    <div class="row g-4">
+        {% for item in resources %}
+        <div class="col-md-4">
+            <div class="resource-card">
+                {% if item.resource.images %}
+                {% set first_image = item.resource.images.split(',')[0].strip() %}
+                {% if first_image %}
+                {% if first_image.startswith('http') %}
+                {% set image_src = first_image %}
+                {% else %}
+                {% set image_src = url_for('static', filename='uploads/' + first_image) %}
+                {% endif %}
+                <div class="resource-image" data-lazy-bg="{{ image_src }}"></div>
+                {% else %}
+                <div class="resource-image resource-placeholder"><i class="bi bi-building"></i></div>
+                {% endif %}
+                {% else %}
+                <div class="resource-image resource-placeholder"><i class="bi bi-building"></i></div>
+                {% endif %}
+                <div class="resource-body">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <h5 class="mb-0">{{ item.resource.title }}</h5>
+                        {% if item.avg_rating > 0 %}
+                        <span class="badge bg-warning text-dark"><i class="bi bi-star-fill"></i> {{ item.avg_rating }}</span>
+                        {% endif %}
+                    </div>
+                    <p class="text-muted mb-2">
+                        <i class="bi bi-tag"></i> {{ item.resource.category }}
+                        <span class="ms-2"><i class="bi bi-geo-alt"></i> {{ item.resource.location }}</span>
+                    </p>
+                    {% if item.resource.capacity %}
+                    <p class="text-muted mb-2"><i class="bi bi-people"></i> Capacity: {{ item.resource.capacity }}</p>
+                    {% endif %}
+                    <p class="resource-description">{{ item.resource.description[:100] }}...</p>
+                    <a href="{{ url_for('resource.detail', resource_id=item.resource.resource_id) }}" class="btn btn-sm btn-primary w-100">
+                        View Details <i class="bi bi-arrow-right"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="col-12">
+            <div class="alert alert-info text-center">
+                <i class="bi bi-info-circle"></i> No resources found. Try adjusting your search filters.
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

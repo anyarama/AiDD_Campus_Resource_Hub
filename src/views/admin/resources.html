@@ -1,0 +1,108 @@
+{% extends "layout.html" %}
+{% block title %}Manage Resources{% endblock %}
+{% block content %}
+<div class="container py-4 admin-shell">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h2 mb-1">Manage Resources</h1>
+            <p class="text-muted mb-0">Review and manage all campus resources</p>
+        </div>
+    </div>
+
+    <div class="mb-4">
+        <ul class="nav nav-pills">
+            <li class="nav-item">
+                <a class="nav-link {% if not selected_status %}active{% endif %}" href="{{ url_for('admin.manage_resources') }}">All</a>
+            </li>
+            {% for status in valid_statuses %}
+            <li class="nav-item">
+                <a class="nav-link {% if selected_status == status %}active{% endif %}" href="{{ url_for('admin.manage_resources', status=status) }}">{{ status.title() }}</a>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+
+    <div class="dashboard-card">
+        <div class="table-responsive">
+            <table class="table align-middle resources-table">
+                <thead>
+                    <tr>
+                        <th>Title</th>
+                        <th style="width: 200px;">Owner</th>
+                        <th style="width: 140px;">Category</th>
+                        <th style="width: 110px;">Status</th>
+                        <th style="width: 110px;">Restricted</th>
+                        <th style="width: 160px;">Created</th>
+                        <th style="width: 280px;" class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if resources %}
+                        {% for resource in resources %}
+                        <tr>
+                            <td>
+                                <strong class="d-block mb-1">{{ resource.title }}</strong>
+                                <small class="text-muted d-block">{{ resource.location or 'Location not specified' }}</small>
+                            </td>
+                            <td>
+                                {% set owner = owners.get(resource.owner_id) %}
+                                {% if owner %}
+                                    <div class="d-block mb-1">{{ owner.name }}</div>
+                                    <small class="text-muted d-block">{{ owner.email }}</small>
+                                {% else %}
+                                    <span class="text-muted small">User #{{ resource.owner_id }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="badge bg-light text-dark">{{ resource.category or 'Uncategorized' }}</span>
+                            </td>
+                            <td>
+                                <span class="badge {% if resource.status == 'published' %}bg-success{% elif resource.status == 'draft' %}bg-secondary{% else %}bg-warning text-dark{% endif %}">{{ resource.status|title }}</span>
+                            </td>
+                            <td>
+                                {% if resource.is_restricted %}
+                                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle">Yes</span>
+                                {% else %}
+                                    <span class="badge bg-success-subtle text-success border border-success-subtle">No</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="small">{{ resource.created_at|datetime_format('%b %d, %Y') }}</span>
+                            </td>
+                            <td class="text-end">
+                                <div class="d-flex flex-column gap-2 align-items-end">
+                                    <a href="{{ url_for('resource.detail', resource_id=resource.resource_id) }}" class="btn btn-sm btn-outline-primary" title="View resource">
+                                        <i class="bi bi-eye"></i> View
+                                    </a>
+                                    <form method="POST" action="{{ url_for('admin.update_resource_status', resource_id=resource.resource_id) }}" class="resource-action-form">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <input type="hidden" name="return_status" value="{{ selected_status or '' }}">
+                                        <div class="input-group input-group-sm">
+                                            <select class="form-select form-select-sm" name="status">
+                                                {% for status in valid_statuses %}
+                                                <option value="{{ status }}" {% if resource.status == status %}selected{% endif %}>{{ status.title() }}</option>
+                                                {% endfor %}
+                                            </select>
+                                            <button class="btn btn-primary btn-sm" type="submit">Update</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="7" class="text-center text-muted py-5">
+                                <div class="empty-state">
+                                    <i class="bi bi-box" style="font-size: 3rem; opacity: 0.3;"></i>
+                                    <p class="mt-3 mb-0">No resources found for this filter.</p>
+                                </div>
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

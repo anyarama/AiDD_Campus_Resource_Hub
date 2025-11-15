@@ -1,0 +1,113 @@
+{% extends "layout.html" %}
+{% block title %}Manage Bookings{% endblock %}
+{% block content %}
+<div class="container py-4 admin-shell">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h2 mb-1">Manage Bookings</h1>
+            <p class="text-muted mb-0">Review and manage all booking requests</p>
+        </div>
+    </div>
+
+    <div class="mb-4">
+        <ul class="nav nav-pills">
+            <li class="nav-item">
+                <a class="nav-link {% if not selected_status %}active{% endif %}" href="{{ url_for('admin.manage_bookings') }}">All</a>
+            </li>
+            {% for status in valid_statuses %}
+            <li class="nav-item">
+                <a class="nav-link {% if selected_status == status %}active{% endif %}" href="{{ url_for('admin.manage_bookings', status=status) }}">{{ status.title() }}</a>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+
+    <div class="dashboard-card">
+        <div class="table-responsive">
+            <table class="table align-middle bookings-table">
+                <thead>
+                    <tr>
+                        <th style="width: 70px;">ID</th>
+                        <th>Resource</th>
+                        <th style="width: 180px;">Requester</th>
+                        <th style="width: 160px;">Start</th>
+                        <th style="width: 160px;">End</th>
+                        <th style="width: 110px;">Status</th>
+                        <th style="min-width: 200px;">Review Notes</th>
+                        <th style="width: 280px;" class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if bookings %}
+                        {% for booking in bookings %}
+                        <tr>
+                            <td>
+                                <span class="text-muted small">#{{ booking.booking_id }}</span>
+                            </td>
+                            <td>
+                                <strong class="d-block mb-1">{{ booking.resource_title }}</strong>
+                                <small class="text-muted">{{ booking.category or 'Uncategorized' }}</small>
+                            </td>
+                            <td>
+                                <div class="d-block mb-1">{{ booking.requester_name }}</div>
+                                <small class="text-muted d-block">{{ booking.requester_email }}</small>
+                            </td>
+                            <td>
+                                <span class="small">{{ booking.start_datetime|datetime_format('%b %d, %Y') }}</span><br>
+                                <span class="text-muted small">{{ booking.start_datetime|datetime_format('%I:%M %p') }}</span>
+                            </td>
+                            <td>
+                                <span class="small">{{ booking.end_datetime|datetime_format('%b %d, %Y') }}</span><br>
+                                <span class="text-muted small">{{ booking.end_datetime|datetime_format('%I:%M %p') }}</span>
+                            </td>
+                            <td>
+                                <span class="badge status-{{ booking.status }}">{{ booking.status|upper }}</span>
+                            </td>
+                            <td>
+                                {% if booking.decision_notes %}
+                                <div class="small mb-1">{{ booking.decision_notes }}</div>
+                                {% if booking.decision_by_name %}
+                                <div class="text-muted small">by {{ booking.decision_by_name }}</div>
+                                {% endif %}
+                                {% else %}
+                                <span class="text-muted small">—</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-end">
+                                <div class="d-flex flex-column gap-2 align-items-end">
+                                    <a href="{{ url_for('booking.detail', booking_id=booking.booking_id) }}" class="btn btn-sm btn-outline-primary" title="View details">
+                                        <i class="bi bi-eye"></i> View
+                                    </a>
+                                    <form method="POST" action="{{ url_for('admin.admin_update_booking_status', booking_id=booking.booking_id) }}" class="booking-action-form">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <input type="hidden" name="return_status" value="{{ selected_status or '' }}">
+                                        <div class="input-group input-group-sm mb-2">
+                                            <select class="form-select form-select-sm" name="status">
+                                                {% for status in valid_statuses %}
+                                                <option value="{{ status }}" {% if booking.status == status %}selected{% endif %}>{{ status.title() }}</option>
+                                                {% endfor %}
+                                            </select>
+                                            <button class="btn btn-primary btn-sm" type="submit">Update</button>
+                                        </div>
+                                        <textarea name="decision_notes" class="form-control form-control-sm" rows="2" placeholder="Add notes (optional)"></textarea>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="8" class="text-center text-muted py-5">
+                                <div class="empty-state">
+                                    <i class="bi bi-calendar-x" style="font-size: 3rem; opacity: 0.3;"></i>
+                                    <p class="mt-3 mb-0">No bookings found for this filter.</p>
+                                </div>
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

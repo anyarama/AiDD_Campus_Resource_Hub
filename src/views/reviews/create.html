@@ -1,0 +1,37 @@
+{% extends "layout.html" %}
+{% block title %}Write a Review{% endblock %}
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-6">
+            <div class="dashboard-card">
+                <h2 class="mb-3">Review {{ resource.title }}</h2>
+                <form method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="mb-3">
+                        <label for="rating" class="form-label">Rating *</label>
+                        <select class="form-select" id="rating" name="rating" required>
+                            <option value="" disabled {% if not selected_rating %}selected{% endif %}>Select rating</option>
+                            {% for value in range(1, 6) %}
+                            <option value="{{ value }}" {% if selected_rating == value %}selected{% endif %}>{{ value }} Star{% if value > 1 %}s{% endif %}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="comment" class="form-label">Comment</label>
+                        <textarea class="form-control" id="comment" name="comment" rows="4" placeholder="Share your experience (optional)">{{ comment or '' }}</textarea>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            Submit Review
+                        </button>
+                        <a href="{{ url_for('resource.detail', resource_id=resource.resource_id) }}" class="btn btn-outline-secondary">
+                            Cancel
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

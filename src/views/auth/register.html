@@ -1,0 +1,109 @@
+{% extends "layout.html" %}
+{% block title %}Register - Campus Resource Hub{% endblock %}
+{% block content %}
+{% set login_gallery = [
+    'images/login/20250805_CampusScenics_JB_0030.jpg',
+    'images/login/20250805_CampusScenics_JB_0093.jpg',
+    'images/login/20250805_CampusScenics_JB_0149.jpg',
+    'images/login/20250805_CampusScenics_JB_0160.jpg'
+] %}
+{% set hero_image_path = login_gallery | random %}
+{% set hero_image_url = url_for('static', filename=hero_image_path) %}
+<section class="py-5">
+    <div class="container">
+        <div class="row g-4 align-items-stretch">
+            <div class="col-lg-6 d-none d-lg-flex">
+                <div class="card-highlight h-100 w-100 p-0 overflow-hidden position-relative text-white">
+                    <img src="{{ hero_image_url }}"
+                         alt="Indiana University campus view"
+                         class="w-100 h-100"
+                         style="object-fit: cover;">
+                    <div class="position-absolute top-0 start-0 end-0 bottom-0"
+                         style="background: linear-gradient(180deg, rgba(210, 110, 110, 0.32), rgba(79, 8, 8, 0.78));"></div>
+                    <div class="position-absolute top-0 start-0 end-0 bottom-0 d-flex flex-column justify-content-center align-items-center text-center gap-3 p-4 p-xl-5">
+                        <div class="p-3 rounded" style="background: rgba(255,255,255,0.18); backdrop-filter: blur(4px);">
+                            <img src="{{ url_for('static', filename='images/login/Indiana_Hoosiers_logo.svg.png') }}"
+                                 alt="Indiana University logo"
+                                 style="max-width: 120px; height: auto; display: block; filter: drop-shadow(0 6px 18px rgba(0,0,0,0.25));">
+                        </div>
+                        <div class="text-uppercase fw-semibold" style="letter-spacing: 0.32em; font-size: 1.15rem; color: #ffffff;">Indiana University</div>
+                        <div>
+                            <p class="text-uppercase fw-semibold mb-2" style="letter-spacing: 0.25em; color: rgba(255,255,255,0.9);">Campus Resource Hub</p>
+                            <h2 class="heading-3 mb-2" style="color: #fff;">Create your account to manage campus resources.</h2>
+                            <p class="mb-0" style="color: rgba(255,255,255,0.85);">Join trusted Kelley students, faculty, and staff to book rooms, equipment, and services.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-6 d-flex">
+                <div class="card-surface shadow-lg p-4 p-lg-5 w-100 d-flex flex-column">
+                    <div class="text-center mb-4">
+                        <span class="d-inline-flex align-items-center justify-content-center mb-3"
+                              style="width: 56px; height: 56px; border-radius: var(--radius-pill); background: rgba(153,0,0,0.08); color: var(--color-primary);">
+                            <i class="bi bi-person-plus-fill"></i>
+                        </span>
+                        <p class="text-uppercase text-muted mb-1" style="letter-spacing: 0.25em;">Join the hub</p>
+                        <h1 class="heading-3 mb-1">Create account</h1>
+                        <p class="text-muted mb-0">Complete the form below to get started.</p>
+                    </div>
+                    <form method="POST" action="{{ url_for('auth.register') }}" class="d-flex flex-column gap-3 needs-validation" novalidate>
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <div>
+                            <label for="name" class="form-label">
+                                Full Name
+                            </label>
+                            <input type="text" class="form-field" id="name" name="name" placeholder="John Doe" required minlength="2" autofocus>
+                        </div>
+                        <div>
+                            <label for="email" class="form-label">
+                                Email Address
+                            </label>
+                            <input type="email" class="form-field" id="email" name="email" placeholder="your.name@iu.edu" required>
+                            <div class="form-help">Use your iu.edu email address to register</div>
+                        </div>
+                        <div>
+                            <label for="department" class="form-label">
+                                Department <span class="text-muted">(Optional)</span>
+                            </label>
+                            <input type="text" class="form-field" id="department" name="department" placeholder="e.g., Computer Science">
+                        </div>
+                        <div>
+                            <label for="role" class="form-label">
+                                Role
+                            </label>
+                            <select class="form-field" id="role" name="role" required>
+                                <option value="student" selected>Student</option>
+                                <option value="staff">Staff</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="password" class="form-label">
+                                Password
+                            </label>
+                            <input type="password" class="form-field" id="password" name="password" placeholder="Create a strong password" required minlength="8">
+                            <div class="form-help">Minimum 8 characters with uppercase, lowercase, and digit</div>
+                        </div>
+                        <div>
+                            <label for="confirm_password" class="form-label">
+                                Confirm Password
+                            </label>
+                            <input type="password" class="form-field" id="confirm_password" name="confirm_password" placeholder="Re-enter your password" required>
+                        </div>
+                        <button type="submit" class="btn-primary-iu w-100">
+                            <i class="bi bi-check-circle me-2"></i>Create Account
+                        </button>
+                    </form>
+                    <div class="auth-divider mt-4">
+                        <span>or</span>
+                    </div>
+                    <div class="text-center">
+                        <a href="{{ url_for('auth.login') }}" class="btn-ghost-iu w-100" style="justify-content: center;">
+                            Already have an account? Sign in
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

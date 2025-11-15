@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Campus Resource Hub{% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v={{ cache_bust }}">
+    {% if current_user.is_authenticated %}
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    {% endif %}
+</head>
+<body>
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+    <div class="app-shell">
+        <!-- Navigation -->
+        <nav class="navbar navbar-expand-lg global-nav sticky-top" role="navigation" aria-label="Primary">
+            <div class="container">
+                <a class="navbar-brand brand-mark" href="{{ url_for('index') }}" aria-label="Campus Resource Hub home">
+                    <span class="brand-icon">
+                        <img src="{{ url_for('static', filename='images/login/Indiana_Hoosiers_logo.svg.png') }}"
+                             alt="Indiana University logo" style="width: 100%; height: 100%; object-fit: contain;">
+                    </span>
+                    <div>
+                        <span class="brand-title">Campus Resource Hub</span>
+                    </div>
+                </a>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
+                        aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="collapse navbar-collapse" id="navbarNav">
+                    <ul class="navbar-nav ms-auto align-items-lg-center">
+                        <li class="nav-item">
+                            <a class="nav-link nav-pill" href="{{ url_for('resource.list_resources') }}">
+                                <i class="bi bi-search"></i> Browse
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link nav-pill" href="{{ url_for('concierge.index') }}">
+                                <i class="bi bi-stars"></i> Concierge
+                            </a>
+                        </li>
+                        {% if current_user.is_authenticated %}
+                            <li class="nav-item">
+                                <a class="nav-link nav-pill" href="{{ url_for('dashboard') }}">
+                                    <i class="bi bi-speedometer2"></i> Dashboard
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link nav-pill" href="{{ url_for('message.list_threads') }}">
+                                    <i class="bi bi-chat-dots"></i> Messages
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link nav-pill nav-pill--accent" href="{{ url_for('resource.create') }}">
+                                    <i class="bi bi-plus-lg"></i> Add Resource
+                                </a>
+                            </li>
+                            {% if current_user.role == 'admin' %}
+                            <li class="nav-item">
+                                <a class="nav-link nav-pill" href="{{ url_for('admin.dashboard') }}">
+                                    <i class="bi bi-gear"></i> Admin
+                                </a>
+                            </li>
+                            {% endif %}
+                        {% endif %}
+                    </ul>
+                    <div class="nav-meta ms-lg-3">
+                        {% if current_user.is_authenticated %}
+                            <span class="role-chip text-uppercase">{{ current_user.role }}</span>
+                            <div class="dropdown notification-menu" data-notification-root>
+                                <button class="btn btn-link notification-button position-relative" type="button"
+                                        data-bs-toggle="dropdown" data-bs-auto-close="outside"
+                                        data-notification-toggle
+                                        data-notification-feed="{{ url_for('notification.feed') }}"
+                                        data-notification-ack="{{ url_for('notification.ack') }}"
+                                        data-notification-count="{{ nav_notification_new_count }}"
+                                        aria-expanded="false"
+                                        aria-label="View notifications">
+                                    <i class="bi bi-bell-fill"></i>
+                                    {% if nav_notification_new_count %}
+                                        <span class="notification-badge">
+                                            {% if nav_notification_new_count > 9 %}9+{% else %}{{ nav_notification_new_count }}{% endif %}
+                                        </span>
+                                    {% endif %}
+                                </button>
+                                <div class="dropdown-menu dropdown-menu-end notification-dropdown shadow-lg" data-notification-dropdown>
+                                    <div class="notification-list" data-notification-list>
+                                        {% for notification in nav_notifications %}
+                                            <a class="notification-item {% if notification.is_new %}notification-item--new{% endif %}" href="{{ notification.url }}">
+                                                <div class="notification-icon notification-icon--{{ notification.accent }}">
+                                                    <i class="bi {{ notification.icon }}" aria-hidden="true"></i>
+                                                </div>
+                                                <div class="notification-body">
+                                                    <div class="notification-title">{{ notification.title }}</div>
+                                                    {% if notification.body %}
+                                                    <div class="notification-subtitle">{{ notification.body }}</div>
+                                                    {% endif %}
+                                                    <div class="notification-meta">{{ notification.time_display }}</div>
+                                                </div>
+                                                {% if notification.is_new %}
+                                                    <span class="notification-dot" aria-hidden="true"></span>
+                                                {% endif %}
+                                            </a>
+                                        {% endfor %}
+                                    </div>
+                                    <div class="notification-empty text-center p-4 {% if nav_notifications %}d-none{% endif %}" data-notification-empty>
+                                        <i class="bi bi-stars d-block mb-2 text-muted" aria-hidden="true"></i>
+                                        <p class="mb-0 text-muted">You're all caught up.</p>
+                                    </div>
+                                    <div class="notification-footer">
+                                        <a class="notification-link" href="{{ url_for('dashboard') }}">
+                                            View full activity
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="dropdown">
+                                <button class="btn btn-sm btn-outline-secondary dropdown-toggle d-flex align-items-center gap-2" type="button" data-bs-toggle="dropdown">
+                                    <i class="bi bi-person-circle"></i>
+                                    <span>{{ current_user.name }}</span>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end">
+                                    <li><span class="dropdown-item-text small text-muted">{{ current_user.email }}</span></li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><a class="dropdown-item" href="{{ url_for('auth.logout') }}">Logout</a></li>
+                                </ul>
+                            </div>
+                        {% else %}
+                            <a class="nav-link nav-pill" href="{{ url_for('auth.login') }}">Login</a>
+                            <a class="btn btn-primary nav-cta" href="{{ url_for('auth.register') }}">Get Started</a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Flash Messages -->
+        <div class="flash-stack container mt-3" role="status" aria-live="polite" aria-atomic="true">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }} alert-dismissible fade show slide-down shadow-sm" role="alert">
+                            <i class="bi {% if category == 'success' %}bi-check-circle-fill{% elif category == 'danger' %}bi-exclamation-triangle-fill{% elif category == 'warning' %}bi-exclamation-circle-fill{% else %}bi-info-circle-fill{% endif %} me-2"></i>
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+        </div>
+
+        <!-- Main Content -->
+        <main id="main-content" class="app-main" role="main" tabindex="-1">
+            {% block content %}{% endblock %}
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer" role="contentinfo">
+            <div class="container">
+                <div class="footer-primary">
+                    <section class="footer-brand">
+                        <a class="brand-mark brand-mark--footer mb-3" href="{{ url_for('index') }}" aria-label="Campus Resource Hub home">
+                            <span class="brand-icon">
+                                <img src="{{ url_for('static', filename='images/login/Indiana_Hoosiers_logo.svg.png') }}"
+                                     alt="Indiana University logo" style="width: 100%; height: 100%; object-fit: contain;">
+                            </span>
+                            <div>
+                                <span class="brand-title">Campus Resource Hub</span>
+                            </div>
+                        </a>
+                        <p class="footer-tagline" style="font-size: 1.05rem; line-height: 1.6;">All campus study rooms, maker spaces, and student services from one clean control panel.</p>
+                        <div class="footer-actions" role="group" aria-label="Primary footer actions">
+                            <a class="btn btn-primary shadow" href="{{ url_for('resource.list_resources') }}">
+                                <i class="bi bi-search me-2" aria-hidden="true"></i>
+                                Browse directory
+                            </a>
+                            {% if current_user.is_authenticated %}
+                                <a class="btn btn-outline-secondary" href="{{ url_for('resource.create') }}">
+                                    <i class="bi bi-plus-circle" aria-hidden="true"></i>
+                                    Add resource
+                                </a>
+                            {% else %}
+                                <a class="btn btn-outline-secondary" href="{{ url_for('auth.register') }}">
+                                    <i class="bi bi-person-plus" aria-hidden="true"></i>
+                                    Join the hub
+                                </a>
+                            {% endif %}
+                        </div>
+                    </section>
+                    <div class="footer-links">
+                        <section class="footer-column">
+                            <h6>Essential</h6>
+                            <ul class="footer-links-list">
+                                <li><a href="{{ url_for('resource.list_resources') }}">Resource directory</a></li>
+                                <li><a href="{{ url_for('concierge.index') }}">Resource concierge</a></li>
+                                {% if current_user.is_authenticated %}
+                                    <li><a href="{{ url_for('dashboard') }}">Dashboard</a></li>
+                                {% else %}
+                                    <li><a href="{{ url_for('auth.login') }}">Login</a></li>
+                                {% endif %}
+                                <li><a href="{{ url_for('calendar.google_connect') }}">Calendar sync</a></li>
+                            </ul>
+                        </section>
+                        <section class="footer-column">
+                            <h6>Support</h6>
+                            <ul class="footer-links-list">
+                                <li><a href="{{ url_for('message.list_threads') }}">Message center</a></li>
+                                <li><a href="{{ url_for('accessibility.overview') }}">Accessibility hub</a></li>
+                                {% if current_user.is_authenticated and current_user.role == 'admin' %}
+                                    <li><a href="{{ url_for('admin.dashboard') }}">Admin console</a></li>
+                                {% endif %}
+                            </ul>
+                            <p class="footer-help-text">Average response time under one business day.</p>
+                        </section>
+                    </div>
+                </div>
+                <div class="footer-bottom">
+                    <div class="footer-meta">
+                        <span>&copy; 2025 Campus Resource Hub</span>
+                        <span>Indiana University · AiDD Capstone</span>
+                    </div>
+                    <div class="footer-socials" aria-label="IU social media">
+                        <a href="https://twitter.com/IUBloomington" target="_blank" rel="noopener" aria-label="IU on Twitter">
+                            <i class="bi bi-twitter" aria-hidden="true"></i>
+                        </a>
+                        <a href="https://www.linkedin.com/school/indiana-university-bloomington/" target="_blank" rel="noopener" aria-label="IU on LinkedIn">
+                            <i class="bi bi-linkedin" aria-hidden="true"></i>
+                        </a>
+                        <a href="https://www.youtube.com/user/iubloomington" target="_blank" rel="noopener" aria-label="IU on YouTube">
+                            <i class="bi bi-youtube" aria-hidden="true"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}?v={{ cache_bust }}"></script>
+    <script src="{{ url_for('static', filename='js/form-validation.js') }}?v={{ cache_bust }}"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

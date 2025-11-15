@@ -1,0 +1,138 @@
+{% extends "layout.html" %}
+{% block title %}Create Resource{% endblock %}
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="dashboard-card">
+                <h2 class="mb-4">Create New Resource</h2>
+                <form method="POST" enctype="multipart/form-data">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="mb-3">
+                        <label for="title" class="form-label">Title *</label>
+                        <input type="text" class="form-control" id="title" name="title"
+                               value="{{ form_data.get('title', '') }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Description *</label>
+                        <textarea class="form-control" id="description" name="description" rows="5" required>{{ form_data.get('description', '') }}</textarea>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="category" class="form-label">Category *</label>
+                            <select class="form-select" id="category" name="category" required>
+                                {% for cat in categories %}
+                                <option value="{{ cat }}" {% if form_data.get('category') == cat %}selected{% endif %}>{{ cat }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="location" class="form-label">Location *</label>
+                            <input type="text" class="form-control" id="location" name="location"
+                                   value="{{ form_data.get('location', '') }}" required>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="capacity" class="form-label">Capacity (optional)</label>
+                        <input type="number" class="form-control" id="capacity" name="capacity" min="1"
+                               value="{{ form_data.get('capacity', '') }}">
+                    </div>
+                    <div class="mb-3">
+                        <label for="equipment" class="form-label">Equipment List (optional)</label>
+                        <textarea class="form-control" id="equipment" name="equipment" rows="3"
+                                  placeholder="Projector, Whiteboard, HDMI cables">{{ form_data.get('equipment', '') }}</textarea>
+                        <small class="text-muted">Separate items with commas or new lines.</small>
+                    </div>
+                    <div class="mb-3">
+                        <label for="availability_rules" class="form-label">Availability Notes (optional)</label>
+                        <textarea class="form-control" id="availability_rules" name="availability_rules" rows="2"
+                                  placeholder="Special instructions, holiday closures, etc.">{{ form_data.get('availability_rules', '') }}</textarea>
+                        <small class="text-muted">Optional notes about availability (the schedule below is required).</small>
+                    </div>
+
+                    <!-- Availability Schedule Section (REQUIRED) -->
+                    <div class="alert alert-info mb-3">
+                        <i class="bi bi-info-circle"></i> <strong>Operating Hours Required:</strong> Please set when this resource is available for booking.
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="schedule_template" class="form-label">Operating Hours Schedule *</label>
+                        <select id="schedule_template" name="schedule_template" class="form-select" required>
+                            <option value="">-- Select Operating Hours --</option>
+                            {% for key, template in schedule_templates.items() %}
+                            <option value="{{ key }}" {% if form_data.get('schedule_template') == key %}selected{% endif %}>
+                                {{ template.name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                        <small class="text-muted">Users can only book during these hours. Choose the schedule that matches your resource.</small>
+                    </div>
+
+                    <!-- Booking Rules Section -->
+                    <h5 class="mt-4 mb-3"><i class="bi bi-list-check"></i> Booking Rules</h5>
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label for="min_booking_minutes" class="form-label">Minimum Booking (minutes) *</label>
+                            <input type="number" id="min_booking_minutes" name="min_booking_minutes" class="form-control"
+                                   value="{{ form_data.get('min_booking_minutes', '30') }}" min="15" max="1440" required>
+                            <small class="text-muted">Shortest allowed booking</small>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="max_booking_minutes" class="form-label">Maximum Booking (minutes) *</label>
+                            <input type="number" id="max_booking_minutes" name="max_booking_minutes" class="form-control"
+                                   value="{{ form_data.get('max_booking_minutes', '480') }}" min="30" max="10080" required>
+                            <small class="text-muted">Longest allowed (480 min = 8 hours)</small>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="booking_increment_minutes" class="form-label">Time Slot Increment (minutes) *</label>
+                            <input type="number" id="booking_increment_minutes" name="booking_increment_minutes" class="form-control"
+                                   value="{{ form_data.get('booking_increment_minutes', '30') }}" min="15" max="360" required>
+                            <small class="text-muted">Bookings must be in multiples of this</small>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="buffer_minutes" class="form-label">Buffer Time (minutes)</label>
+                            <input type="number" id="buffer_minutes" name="buffer_minutes" class="form-control"
+                                   value="{{ form_data.get('buffer_minutes', '0') }}" min="0" max="120">
+                            <small class="text-muted">Cleaning/setup time between bookings</small>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="advance_booking_days" class="form-label">Advance Booking Limit (days) *</label>
+                            <input type="number" id="advance_booking_days" name="advance_booking_days" class="form-control"
+                                   value="{{ form_data.get('advance_booking_days', '90') }}" min="1" max="365" required>
+                            <small class="text-muted">How far ahead users can book</small>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="min_lead_time_hours" class="form-label">Minimum Lead Time (hours)</label>
+                            <input type="number" id="min_lead_time_hours" name="min_lead_time_hours" class="form-control"
+                                   value="{{ form_data.get('min_lead_time_hours', '0') }}" min="0" max="168">
+                            <small class="text-muted">Advance notice required to book</small>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="images" class="form-label">Images</label>
+                        <input type="file" class="form-control" id="images" name="images" multiple accept="image/*">
+                        <div id="image-preview" class="image-preview"></div>
+                    </div>
+                    <div class="form-check form-switch mb-3">
+                        <input class="form-check-input" type="checkbox" role="switch" id="is_restricted" name="is_restricted"
+                               {% if form_data.get('is_restricted') %}checked{% endif %}>
+                        <label class="form-check-label" for="is_restricted">Requires owner approval (restricted resource)</label>
+                    </div>
+                    <div class="mb-3">
+                        <label for="status" class="form-label">Status</label>
+                        <select class="form-select" id="status" name="status">
+                            <option value="draft" {% if form_data.get('status', 'draft') == 'draft' %}selected{% endif %}>Draft</option>
+                            <option value="published" {% if form_data.get('status') == 'published' %}selected{% endif %}>Published</option>
+                        </select>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">Create Resource</button>
+                        <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

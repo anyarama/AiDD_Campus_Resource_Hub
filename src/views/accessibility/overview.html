@@ -1,0 +1,192 @@
+{% extends "layout.html" %}
+{% block title %}Accessibility & WCAG{% endblock %}
+{% block content %}
+<section class="a11y-hero section-padding">
+    <div class="container">
+        <div class="a11y-hero-card">
+            <p class="eyebrow text-uppercase text-muted mb-2">Accessibility</p>
+            <h1>Inclusive by design</h1>
+            <p class="lead text-muted mb-0">Campus Resource Hub follows WCAG 2.1 AA guidance with built-in contrast
+                checks, live regions, semantic landmarks, and a manual testing script that any teammate can run.</p>
+        </div>
+    </div>
+</section>
+
+<section class="container section-padding pt-0">
+    <div class="row g-4" aria-live="polite">
+        <div class="col-md-4">
+            <div class="a11y-summary-card">
+                <p class="text-muted text-uppercase small mb-1">Pass rate</p>
+                <h2>{{ audit.summary.pass_rate }}%</h2>
+                <p class="mb-0">{{ audit.summary.status }}</p>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="a11y-summary-card">
+                <p class="text-muted text-uppercase small mb-1">Checks evaluated</p>
+                <h2>{{ audit.summary.total_checks }}</h2>
+                <p class="mb-0">{{ audit.summary.wcag_targets | join(', ') }}</p>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="a11y-summary-card">
+                <p class="text-muted text-uppercase small mb-1">Issues flagged</p>
+                <h2>{{ audit.summary.failures }}</h2>
+                <p class="mb-0">Outstanding recommendations below</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="container section-padding pt-0">
+    <div class="row g-5 align-items-start">
+        <div class="col-lg-7">
+            <div class="a11y-panel">
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-3">
+                    <div>
+                        <h2 class="h4 mb-1">Contrast checks</h2>
+                        <p class="text-muted mb-0">Real-time WCAG ratios based on our design tokens.</p>
+                    </div>
+                    <span class="badge text-bg-light border">{{ audit.theme_checks | length }} tokens monitored</span>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle a11y-table" aria-describedby="contrast-desc">
+                        <caption id="contrast-desc" class="visually-hidden">Contrast thresholds vs. actual ratios.</caption>
+                        <thead>
+                            <tr>
+                                <th scope="col">Token</th>
+                                <th scope="col">Usage</th>
+                                <th scope="col">Ratio</th>
+                                <th scope="col">Target</th>
+                                <th scope="col">WCAG</th>
+                                <th scope="col">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for check in audit.theme_checks %}
+                            <tr class="{% if check.passes %}table-success{% else %}table-warning{% endif %}">
+                                <th scope="row">{{ check.name }}</th>
+                                <td>{{ check.usage }}</td>
+                                <td>{{ '%.2f'|format(check.ratio) }}:1</td>
+                                <td>{{ '%.1f'|format(check.min_ratio) }}:1</td>
+                                <td>{{ check.wcag_rating }}</td>
+                                <td>
+                                    {% if check.passes %}
+                                    <span class="badge rounded-pill text-bg-success">Pass</span>
+                                    {% else %}
+                                    <span class="badge rounded-pill text-bg-warning text-dark">Action</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td colspan="6" class="small text-muted">
+                                    <span class="color-chip" style="--chip-fg: {{ check.foreground }}; --chip-bg: {{ check.background }}"></span>
+                                    {{ check.recommendation }}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-5">
+            <div class="a11y-panel">
+                <h2 class="h4">Template conformance</h2>
+                <p class="text-muted">Automated checks search our base layout for critical ARIA patterns.</p>
+                <ul class="list-unstyled a11y-checklist mb-0">
+                    {% for rule in audit.structure_checks %}
+                    <li class="a11y-checklist-item">
+                        <div class="d-flex align-items-start gap-3">
+                            {% if rule.status == 'pass' %}
+                            <span class="badge rounded-circle bg-success-subtle text-success" aria-label="Pass">
+                                <i class="bi bi-check"></i>
+                            </span>
+                            {% else %}
+                            <span class="badge rounded-circle bg-warning-subtle text-warning" aria-label="Needs attention">
+                                <i class="bi bi-exclamation"></i>
+                            </span>
+                            {% endif %}
+                            <div>
+                                <h3 class="h6 mb-1">{{ rule.name }}</h3>
+                                <p class="mb-1 text-muted small">{{ rule.description }}</p>
+                                <p class="mb-0 small">{{ rule.details }}</p>
+                            </div>
+                        </div>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="container section-padding pt-0">
+    <div class="row g-4">
+        <div class="col-lg-6">
+            <div class="a11y-panel h-100">
+                <h2 class="h4 mb-3">Manual spot checks</h2>
+                <ul class="list-unstyled mb-0">
+                    {% for item in manual_checks %}
+                    <li class="mb-4">
+                        <h3 class="h6 mb-1">{{ item.title }}</h3>
+                        <p class="mb-1 text-muted small">{{ item.description }}</p>
+                        <p class="mb-0 small text-success">{{ item.expected }}</p>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="a11y-panel h-100">
+                <h2 class="h4 mb-3">Guiding principles</h2>
+                <div class="row g-4">
+                    {% for principle in principles %}
+                    <div class="col-sm-6">
+                        <div class="principle-card">
+                            <p class="text-uppercase small text-muted">{{ principle.title }}</p>
+                            <p class="mb-0 small">{{ principle.detail }}</p>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="container section-padding pt-0">
+    <div class="a11y-panel">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-3">
+            <div>
+                <h2 class="h4 mb-1">Recommended tooling</h2>
+                <p class="text-muted mb-0">Pair the built-in audit with industry-standard scanners.</p>
+            </div>
+            <span class="badge text-bg-light border">{{ tools | length }} resources</span>
+        </div>
+        <div class="row g-4">
+            {% for tool in tools %}
+            <div class="col-md-4">
+                <div class="tool-card h-100">
+                    <h3 class="h6 mb-1">{{ tool.name }}</h3>
+                    <p class="small text-muted mb-2">{{ tool.notes }}</p>
+                    <a href="{{ tool.url }}" class="btn btn-outline-secondary btn-sm" target="_blank" rel="noopener">
+                        Visit site <i class="bi bi-box-arrow-up-right"></i>
+                    </a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% if audit.summary.recommendations %}
+        <div class="alert alert-info mt-4 mb-0" role="status">
+            <strong>Next actions:</strong>
+            <ul class="mb-0">
+                {% for item in audit.summary.recommendations %}
+                <li>{{ item }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}

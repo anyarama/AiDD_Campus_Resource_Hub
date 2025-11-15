@@ -1,0 +1,234 @@
+{% extends "layout.html" %}
+{% block title %}Browse Resources{% endblock %}
+{% block content %}
+<div class="container py-4">
+    <header class="mb-4">
+        <p class="eyebrow text-uppercase text-muted mb-1">Resource Hub</p>
+        <h1 class="mb-2">Find the right resource</h1>
+        <p class="text-muted mb-0">Explore study rooms, equipment, and creative spaces around campus. Filter by what matters and hold a slot that matches your schedule.</p>
+    </header>
+
+    <section class="dashboard-card mb-3" aria-labelledby="filters-heading">
+        <div class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3">
+            <h2 class="h5 mb-0" id="filters-heading">Search &amp; filters</h2>
+            <p class="text-muted small mb-0">{{ filter_summary }}</p>
+        </div>
+        <form method="GET" action="{{ url_for('resource.list_resources') }}" class="row g-3" novalidate>
+            <input type="hidden" name="page" value="1">
+            <div class="col-md-4">
+                <label for="keyword" class="form-label">Keyword</label>
+                <input type="search" id="keyword" name="keyword" class="form-control" placeholder="Title, equipment, etc." value="{{ selected_keyword }}">
+            </div>
+            <div class="col-md-4 col-lg-3">
+                <label for="category" class="form-label">Category</label>
+                <select id="category" name="category" class="form-select">
+                    <option value="">All categories</option>
+                    {% for cat in categories %}
+                    <option value="{{ cat }}" {% if cat == selected_category %}selected{% endif %}>{{ cat }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4 col-lg-3">
+                <label for="location" class="form-label">Location</label>
+                <input type="text" id="location" name="location" class="form-control" placeholder="Building or campus" value="{{ selected_location }}">
+            </div>
+            <div class="col-md-4 col-lg-2">
+                <label for="min_capacity" class="form-label">Min capacity</label>
+                <input type="number" id="min_capacity" name="min_capacity" class="form-control" min="1" placeholder="Optional" value="{{ selected_min_capacity }}">
+            </div>
+            <div class="col-md-4">
+                <label for="available_from" class="form-label">Available from</label>
+                <input type="datetime-local" id="available_from" name="available_from" class="form-control" value="{{ selected_available_from }}">
+                <small class="text-muted">Eastern Time</small>
+            </div>
+            <div class="col-md-4">
+                <label for="available_until" class="form-label">Available until</label>
+                <input type="datetime-local" id="available_until" name="available_until" class="form-control" value="{{ selected_available_until }}">
+                <small class="text-muted">Eastern Time</small>
+            </div>
+            <div class="col-md-4 col-lg-3">
+                <label for="sort" class="form-label">Sort by</label>
+                <select id="sort" name="sort" class="form-select">
+                    {% for value, label in sort_options.items() %}
+                    <option value="{{ value }}" {% if value == selected_sort %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-8 col-lg-4 ms-auto d-flex gap-2">
+                <button type="submit" class="btn btn-primary flex-grow-1" aria-label="Run resource search">
+                    <i class="bi bi-search"></i> Search
+                </button>
+                <a href="{{ url_for('resource.list_resources') }}" class="btn btn-outline-secondary" aria-label="Reset filters">
+                    Reset
+                </a>
+            </div>
+        </form>
+        {% if applied_filters %}
+        <div class="filter-chip-group mt-3" role="list">
+            {% for chip in applied_filters %}
+            <a href="{{ chip.remove_url }}" class="filter-chip" role="listitem" aria-label="Remove filter {{ chip.label }}">
+                {{ chip.label }}
+                <span aria-hidden="true">&times;</span>
+            </a>
+            {% endfor %}
+            <a href="{{ url_for('resource.list_resources') }}" class="filter-chip text-danger" role="listitem">
+                Clear all
+                <span aria-hidden="true">&times;</span>
+            </a>
+        </div>
+        {% endif %}
+    </section>
+
+    <section aria-labelledby="results-heading">
+        <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
+            <h2 class="h5 mb-0" id="results-heading">Browse results</h2>
+            <span class="text-muted small">{{ total_results }} results</span>
+        </div>
+        <div class="row g-4">
+            {% for item in resources %}
+            {% set resource = item.resource %}
+            <article class="col-md-6 col-xl-4">
+                <div class="resource-card h-100 d-flex flex-column">
+                    {% if resource.images %}
+                    {% set first_image = resource.images.split(',')[0].strip() %}
+                    {% if first_image %}
+                    {% if first_image.startswith('http') %}
+                    {% set card_image = first_image %}
+                    {% elif '/' in first_image %}
+                    {% set card_image = url_for('static', filename=first_image) %}
+                    {% else %}
+                    {# Check if image has timestamp prefix (uploaded) or is a simple name (sample image) #}
+                    {# Uploaded images have format: YYYYMMDD_HHMMSS_filename.jpg (at least 15 chars with underscore at position 8) #}
+                    {% set has_timestamp = first_image|length > 15 and first_image[8:9] == '_' %}
+                    {% if has_timestamp %}
+                    {# Uploaded image with timestamp prefix - goes to uploads folder #}
+                    {% set card_image = url_for('static', filename='uploads/' + first_image) %}
+                    {% else %}
+                    {# Sample image - goes to images folder #}
+                    {% set card_image = url_for('static', filename='images/' + first_image) %}
+                    {% endif %}
+                    {% endif %}
+                    {% if loop.index <= 6 %}
+                    {# Eagerly load first 6 images for snappy initial display #}
+                    <div class="resource-image" data-eager-bg="{{ card_image }}" role="img" aria-label="Photo of {{ resource.title }}"></div>
+                    {% else %}
+                    <div class="resource-image" data-lazy-bg="{{ card_image }}" role="img" aria-label="Photo of {{ resource.title }}"></div>
+                    {% endif %}
+                    {% else %}
+                    <div class="resource-image resource-placeholder" aria-hidden="true"><i class="bi bi-building"></i></div>
+                    {% endif %}
+                    {% else %}
+                    <div class="resource-image resource-placeholder" aria-hidden="true"><i class="bi bi-building"></i></div>
+                    {% endif %}
+                    <div class="resource-body flex-grow-1 d-flex flex-column">
+                        <div class="resource-header mb-3">
+                            <p class="resource-category text-uppercase text-muted small mb-1">{{ resource.category }}</p>
+                            <h3 class="resource-title h5 mb-2">{{ resource.title }}</h3>
+                            <div class="resource-badges d-flex flex-wrap gap-2">
+                                {% if item.avg_rating > 0 %}
+                                <span class="badge bg-warning-subtle text-dark border border-warning-subtle">
+                                    <i class="bi bi-star-fill text-warning" aria-hidden="true"></i>
+                                    {{ item.avg_rating }} · {{ item.total_reviews }}
+                                </span>
+                                {% endif %}
+                                {% if item.availability_status %}
+                                {% set badge_tone = {
+                                    'success': 'bg-success-subtle text-success border border-success-subtle',
+                                    'info': 'bg-info-subtle text-info border border-info-subtle',
+                                    'warning': 'bg-warning-subtle text-warning border border-warning-subtle',
+                                    'danger': 'bg-danger-subtle text-danger border border-danger-subtle'
+                                } %}
+                                <span class="badge {{ badge_tone[item.availability_badge or 'info'] }}">
+                                    {{ item.availability_status }}
+                                </span>
+                                {% endif %}
+                                {% if resource.is_restricted %}
+                                <span class="badge bg-danger-subtle text-danger border border-danger-subtle">Restricted</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="resource-meta mb-3">
+                            <p class="resource-location text-muted small mb-2 d-flex align-items-center">
+                                <i class="bi bi-geo-alt me-1"></i>
+                                <span>{{ resource.location or 'Location TBD' }}</span>
+                            </p>
+                            {% if resource.capacity %}
+                            <p class="resource-capacity text-muted small mb-2 d-flex align-items-center">
+                                <i class="bi bi-people me-1"></i>
+                                <span>{{ resource.capacity }} seats</span>
+                            </p>
+                            {% endif %}
+                            {% if resource.equipment %}
+                            {% set amenities = resource.equipment.split(',') %}
+                            <p class="resource-amenities text-muted small mb-2 d-flex align-items-start">
+                                <i class="bi bi-tools me-1 mt-1"></i>
+                                <span>
+                                    {% for amenity in amenities[:3] %}
+                                        {{ amenity.strip() }}{% if not loop.last %}, {% endif %}
+                                    {% endfor %}
+                                    {% if amenities|length > 3 %}
+                                        +{{ amenities|length - 3 }} more
+                                    {% endif %}
+                                </span>
+                            </p>
+                            {% endif %}
+                        </div>
+                        <p class="resource-description text-muted flex-grow-1 mb-3">{{ resource.description|default('No description provided.')|truncate(140) }}</p>
+                        {% if item.next_available %}
+                        {% set availability_color_class = {
+                            'success': 'text-success',
+                            'info': 'text-info',
+                            'warning': 'text-warning',
+                            'danger': 'text-danger'
+                        } %}
+                        <p class="resource-next-available {{ availability_color_class[item.availability_badge or 'info'] }} small fw-semibold mb-3 d-flex align-items-center">
+                            <i class="bi bi-clock me-1"></i>
+                            <span>Next available: {{ item.next_available }}</span>
+                        </p>
+                        {% endif %}
+                        {% if not item.can_access %}
+                        <p class="resource-restriction text-muted small mb-3">
+                            {{ item.restriction_note or 'Available to authorized programs only.' }}
+                        </p>
+                        {% endif %}
+                        <div class="resource-action mt-auto">
+                            <a href="{{ url_for('resource.detail', resource_id=resource.resource_id) }}" class="btn btn-outline-primary w-100" aria-label="View details for {{ resource.title }}">
+                                View details
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </article>
+            {% else %}
+            <div class="col-12">
+                <div class="alert alert-info text-center">
+                    <i class="bi bi-info-circle"></i> No resources match your filters. Try broadening the search or <a href="{{ url_for('resource.list_resources') }}">reset filters</a>.
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+
+    {% if pagination.total_pages > 1 %}
+    <nav class="mt-4" aria-label="Resource pagination">
+        <ul class="pagination justify-content-center flex-wrap gap-1">
+            <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
+                <a class="page-link" href="{{ pagination.prev_url if pagination.has_prev else '#' }}" aria-label="Previous page">
+                    Previous
+                </a>
+            </li>
+            {% for page_link in pagination.pages %}
+            <li class="page-item {% if page_link.is_active %}active{% endif %}">
+                <a class="page-link" href="{{ page_link.url }}">{{ page_link.number }}</a>
+            </li>
+            {% endfor %}
+            <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
+                <a class="page-link" href="{{ pagination.next_url if pagination.has_next else '#' }}" aria-label="Next page">
+                    Next
+                </a>
+            </li>
+        </ul>
+    </nav>
+    {% endif %}
+</div>
+{% endblock %}

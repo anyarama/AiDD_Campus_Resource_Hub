@@ -1,0 +1,1032 @@
+{% extends "layout.html" %}
+{% block title %}Booking #{{ booking.booking_id }}{% endblock %}
+{% block content %}
+{% set status_icon_map = {
+    'pending': 'bi-hourglass-split',
+    'approved': 'bi-check-circle',
+    'rejected': 'bi-x-octagon',
+    'cancelled': 'bi-slash-circle',
+    'completed': 'bi-flag'
+} %}
+{% set status_icon = status_icon_map.get(booking.status, 'bi-info-circle') %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <!-- Hero Header -->
+            <div class="booking-hero mb-4">
+                <div class="booking-hero-top">
+                    <div>
+                        <p class="hero-eyebrow text-uppercase mb-1">Reservation overview</p>
+                        <h1 class="hero-title mb-2">Booking #{{ booking.booking_id }}</h1>
+                        <p class="hero-date mb-1">
+                            <i class="bi bi-calendar-event me-2"></i>
+                            {{ booking.start_datetime|datetime_format('%A, %B %d') }}
+                            <span class="text-muted">· {{ booking.start_datetime|datetime_format('%I:%M %p') }} - {{ booking.end_datetime|datetime_format('%I:%M %p') }}</span>
+                        </p>
+                        <p class="hero-location text-muted mb-0">
+                            <i class="bi bi-geo-alt me-2"></i>{{ booking.location or 'Location to be shared' }}
+                        </p>
+                    </div>
+                    <div class="text-lg-end">
+                        <span class="status-pill status-{{ booking.status }}">
+                            <i class="bi {{ status_icon }} me-1"></i>
+                            {{ booking.status|title }}
+                        </span>
+                        <p class="text-muted small mt-3 mb-0">
+                            Requested {{ booking.created_at|relative_time }}
+                            {% if booking.updated_at %}
+                            <span class="dot-separator mx-2"></span>
+                            Updated {{ booking.updated_at|relative_time }}
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+                <div class="hero-meta mt-4">
+                    <div class="hero-chip">
+                        <span>Start</span>
+                        <strong>{{ booking.start_datetime|datetime_format('%b %d · %I:%M %p') }}</strong>
+                    </div>
+                    <div class="hero-chip">
+                        <span>End</span>
+                        <strong>{{ booking.end_datetime|datetime_format('%b %d · %I:%M %p') }}</strong>
+                    </div>
+                    <div class="hero-chip muted">
+                        <span>Recurrence</span>
+                        <strong>{{ recurrence_summary or 'Single reservation' }}</strong>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Status Alerts -->
+            {% if booking.status == 'pending' %}
+            <div class="alert alert-info d-flex align-items-center mb-4">
+                <i class="bi bi-hourglass-split fs-4 me-3"></i>
+                <div>
+                    <strong>Awaiting Approval</strong>
+                    <p class="mb-0 small">This booking is pending approval from the resource owner or an administrator.</p>
+                </div>
+            </div>
+            {% endif %}
+
+            {% if booking.decision_notes %}
+            <div class="alert alert-secondary mb-4">
+                <div class="d-flex align-items-start">
+                    <i class="bi bi-chat-left-text fs-4 me-3 mt-1"></i>
+                    <div class="flex-grow-1">
+                        <strong class="d-block mb-2">Reviewer Notes</strong>
+                        <p class="mb-2">{{ booking.decision_notes }}</p>
+                        {% if booking.decision_by_name %}
+                        <small class="text-muted">
+                            <i class="bi bi-person"></i> {{ booking.decision_by_name }}
+                            {% if booking.decision_timestamp %}
+                            <i class="bi bi-dot"></i>
+                            {{ booking.decision_timestamp|datetime_format }}
+                            {% endif %}
+                        </small>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="row g-4 align-items-start">
+                <!-- Main Content Column -->
+                <div class="col-lg-8">
+                    <!-- Resource Card -->
+                    <div class="dashboard-card mb-4">
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="icon-box bg-primary-subtle text-primary me-3">
+                                <i class="bi bi-box"></i>
+                            </div>
+                            <h5 class="mb-0">Resource Information</h5>
+                        </div>
+
+                        <div class="info-grid two-column">
+                            <div class="info-item">
+                                <label class="info-label">Resource</label>
+                                <div class="info-value">{{ booking.resource_title }}</div>
+                            </div>
+                            <div class="info-item">
+                                <label class="info-label">Category</label>
+                                <div class="info-value">{{ booking.category }}</div>
+                            </div>
+                            <div class="info-item">
+                                <label class="info-label">Location</label>
+                                <div class="info-value">
+                                    <i class="bi bi-geo-alt text-muted me-1"></i>
+                                    {{ booking.location }}
+                                </div>
+                            </div>
+                            <div class="info-item">
+                                <label class="info-label">Owner</label>
+                                <div class="info-value">{{ booking.owner_name or 'Resource Owner' }}</div>
+                                <small class="text-muted d-block">{{ booking.owner_email or 'Not shared' }}</small>
+                            </div>
+                        </div>
+
+                        <div class="contact-tile mt-3">
+                            <div class="avatar-circle me-3">{{ (booking.owner_name or 'R')[:1]|upper }}</div>
+                            <div class="flex-grow-1">
+                                <p class="mb-0 fw-semibold">{{ booking.owner_name or 'Resource Owner' }}</p>
+                                <small class="text-muted">Resource Owner</small>
+                            </div>
+                            <span class="badge bg-white text-primary border border-primary-subtle">Primary Contact</span>
+                        </div>
+
+                        <div class="mt-3 d-flex flex-wrap gap-2">
+                            <a href="{{ url_for('resource.detail', resource_id=booking.resource_id) }}" class="btn btn-outline-primary btn-sm">
+                                <i class="bi bi-arrow-right-circle"></i> View Resource Details
+                            </a>
+                            {% if booking.owner_email %}
+                            <a href="mailto:{{ booking.owner_email }}" class="btn btn-outline-secondary btn-sm">
+                                <i class="bi bi-envelope"></i> Email Owner
+                            </a>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Schedule Card -->
+                    <div class="dashboard-card mb-4">
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="icon-box bg-success-subtle text-success me-3">
+                                <i class="bi bi-clock"></i>
+                            </div>
+                            <h5 class="mb-0">Booking Schedule</h5>
+                        </div>
+
+                        <div class="schedule-timeline">
+                            <div class="schedule-item">
+                                <div class="schedule-marker start"></div>
+                                <div>
+                                    <p class="schedule-label text-success mb-1">Begins</p>
+                                    <p class="schedule-value mb-1">{{ booking.start_datetime|datetime_format('%A, %B %d · %I:%M %p') }}</p>
+                                    <small class="text-muted">{{ booking.start_datetime|relative_time }}</small>
+                                </div>
+                            </div>
+                            <div class="schedule-item">
+                                <div class="schedule-marker end"></div>
+                                <div>
+                                    <p class="schedule-label text-danger mb-1">Wraps up</p>
+                                    <p class="schedule-value mb-1">{{ booking.end_datetime|datetime_format('%A, %B %d · %I:%M %p') }}</p>
+                                    <small class="text-muted">{{ booking.end_datetime|relative_time }}</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="timeline-note mt-3">
+                            <i class="bi bi-info-circle me-2 text-primary"></i>
+                            All times shown in your local timezone.
+                        </div>
+
+                        <div class="mt-4 soft-highlight">
+                            <div class="d-flex align-items-center mb-2">
+                                <div class="icon-box bg-info-subtle text-info me-3">
+                                    <i class="bi bi-arrow-repeat"></i>
+                                </div>
+                                <div>
+                                    <p class="mb-0 fw-semibold">Recurrence</p>
+                                    {% if recurrence_summary %}
+                                    <p class="mb-0 text-body">{{ recurrence_summary }}</p>
+                                    {% else %}
+                                    <small class="text-muted">This is a one-time booking.</small>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Operating Hours -->
+                    {% if schedule_display %}
+                    <div class="dashboard-card mb-4">
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="icon-box bg-warning-subtle text-warning me-3">
+                                <i class="bi bi-clock-history"></i>
+                            </div>
+                            <h5 class="mb-0">Operating Hours</h5>
+                        </div>
+
+                        <div class="operating-hours-container">
+                            <div class="operating-hours-schedule">
+                                {% for line in schedule_display %}
+                                {% set colon_pos = line.find(':') %}
+                                {% if colon_pos > 0 %}
+                                {% set day_name = line[:colon_pos].strip() %}
+                                {% set time_range = line[colon_pos + 1:].strip() %}
+                                <div class="operating-hours-day">
+                                    <span class="operating-hours-day-name">{{ day_name }}</span>
+                                    {% if 'Closed' in time_range or time_range == '' %}
+                                    <span class="operating-hours-time operating-hours-closed">Closed</span>
+                                    {% else %}
+                                    <span class="operating-hours-time operating-hours-open">{{ time_range }}</span>
+                                    {% endif %}
+                                </div>
+                                {% endif %}
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <div class="operating-hours-note mt-3">
+                            <i class="bi bi-info-circle me-2 text-muted"></i>
+                            <small class="text-muted">Standard availability for this resource</small>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Request History -->
+                    <div class="dashboard-card mb-4 history-card">
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="icon-box bg-secondary-subtle text-secondary me-3">
+                                <i class="bi bi-journal-text"></i>
+                            </div>
+                            <h5 class="mb-0">Request History</h5>
+                        </div>
+
+                        <ul class="history-list list-unstyled mb-0">
+                            <li>
+                                <span class="history-label">Created</span>
+                                <span class="history-value">{{ booking.created_at|datetime_format('%b %d, %Y %I:%M %p') }}</span>
+                            </li>
+                            <li>
+                                <span class="history-label">Last Updated</span>
+                                <span class="history-value">
+                                    {{ booking.updated_at|datetime_format('%b %d, %Y %I:%M %p') if booking.updated_at else '—' }}
+                                </span>
+                            </li>
+                            <li>
+                                <span class="history-label">Decision</span>
+                                <span class="history-value">
+                                    {% if booking.decision_timestamp %}
+                                    {{ booking.decision_timestamp|datetime_format('%b %d, %Y %I:%M %p') }}
+                                    {% else %}
+                                    Awaiting action
+                                    {% endif %}
+                                </span>
+                            </li>
+                            <li>
+                                <span class="history-label">Reviewed By</span>
+                                <span class="history-value">{{ booking.decision_by_name or 'Not yet reviewed' }}</span>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <!-- Calendar Integration Card -->
+                    <div class="dashboard-card calendar-card">
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="icon-box bg-info-subtle text-info me-3">
+                                <i class="bi bi-calendar-event"></i>
+                            </div>
+                            <h5 class="mb-0">Calendar Integration</h5>
+                        </div>
+
+                        <div class="calendar-actions d-flex gap-2 flex-wrap mb-3">
+                            {% if google_connection %}
+                            <form method="POST" action="{{ url_for('calendar.sync_booking', booking_id=booking.booking_id) }}" class="d-inline">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="btn btn-primary btn-sm">
+                                    {% if calendar_event %}
+                                    <i class="bi bi-arrow-repeat"></i> Resync Google Calendar
+                                    {% else %}
+                                    <i class="bi bi-cloud-upload"></i> Sync to Google Calendar
+                                    {% endif %}
+                                </button>
+                            </form>
+                            {% else %}
+                            <a href="{{ url_for('calendar.google_connect', next=url_for('booking.detail', booking_id=booking.booking_id)) }}" class="btn btn-primary btn-sm">
+                                <i class="bi bi-google"></i> Connect Google Calendar
+                            </a>
+                            {% endif %}
+
+                            <a href="{{ url_for('calendar.export_booking_ics', booking_id=booking.booking_id) }}" class="btn btn-outline-secondary btn-sm">
+                                <i class="bi bi-download"></i> Download iCal
+                            </a>
+
+                            {% if calendar_event and calendar_event.html_link %}
+                            <a href="{{ calendar_event.html_link }}" target="_blank" rel="noopener" class="btn btn-link btn-sm">
+                                <i class="bi bi-box-arrow-up-right"></i> View in Google Calendar
+                            </a>
+                            {% endif %}
+                        </div>
+
+                        <div class="calendar-footnote small text-muted">
+                            {% if calendar_event %}
+                            <i class="bi bi-check-circle text-success"></i>
+                            Last synced {{ calendar_event.synced_at|datetime_format('%b %d, %Y %I:%M %p') }}
+                            {% elif google_connection %}
+                            <i class="bi bi-info-circle"></i>
+                            Connected! Sync this booking to create the event.
+                            {% else %}
+                            <i class="bi bi-info-circle"></i>
+                            Connect Google Calendar to automatically sync your reservations.
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sidebar Column -->
+                <div class="col-lg-4">
+                    <!-- Requester Card -->
+                    <div class="dashboard-card mb-4 requester-card">
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="icon-box bg-warning-subtle text-warning me-3">
+                                <i class="bi bi-people"></i>
+                            </div>
+                            <h5 class="mb-0">People</h5>
+                        </div>
+
+                        <div class="requester-intro mb-3">
+                            <div class="avatar-circle me-3 requester-avatar">{{ (booking.requester_name or 'R')[:1]|upper }}</div>
+                            <div>
+                                <p class="mb-0 fw-semibold">{{ booking.requester_name or 'Requester' }}</p>
+                                <small class="text-muted">{{ booking.requester_email or 'Not provided' }}</small>
+                            </div>
+                        </div>
+
+                        <div class="meta-pair mb-3">
+                            <span class="meta-label">Role</span>
+                            <span class="meta-value">Requester</span>
+                        </div>
+
+                        <div class="border-top pt-3">
+                            <p class="info-label mb-1">Resource Owner</p>
+                            <div class="d-flex align-items-start gap-2">
+                                <i class="bi bi-person-badge text-muted mt-1"></i>
+                                <div>
+                                    <div class="info-value">{{ booking.owner_name or 'Resource Owner' }}</div>
+                                    <small class="text-muted">{{ booking.owner_email or 'Not shared' }}</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mt-3">
+                            {% if current_user.user_id == booking.requester_id and current_user.user_id != booking.owner_id %}
+                            <a href="{{ url_for('message.send', receiver_id=booking.owner_id, resource_id=booking.resource_id) }}" class="btn btn-outline-primary btn-sm w-100">
+                                <i class="bi bi-chat-dots"></i> Message Owner
+                            </a>
+                            {% elif current_user.user_id == booking.owner_id %}
+                            <a href="{{ url_for('message.send', receiver_id=booking.requester_id, resource_id=booking.resource_id) }}" class="btn btn-outline-primary btn-sm w-100">
+                                <i class="bi bi-chat-dots"></i> Message Requester
+                            </a>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Actions Card -->
+                    {% if booking.status == 'pending' and (current_user.user_id == booking.owner_id or current_user.role == 'admin') %}
+                    <div class="dashboard-card mb-4 action-card">
+                        <h5 class="mb-3">Review Booking</h5>
+
+                        <form method="POST" action="{{ url_for('booking.approve', booking_id=booking.booking_id) }}" class="mb-3">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <label class="form-label small text-muted">Optional Notes</label>
+                            <textarea class="form-control form-control-sm mb-2" name="decision_notes" rows="2" placeholder="Add approval notes..."></textarea>
+                            <button type="submit" class="btn btn-success w-100">
+                                <i class="bi bi-check-circle"></i> Approve Booking
+                            </button>
+                        </form>
+
+                        <form method="POST" action="{{ url_for('booking.reject', booking_id=booking.booking_id) }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <textarea class="form-control form-control-sm mb-2" name="decision_notes" rows="2" placeholder="Reason for rejection..."></textarea>
+                            <button type="submit" class="btn btn-danger w-100">
+                                <i class="bi bi-x-circle"></i> Reject Booking
+                            </button>
+                        </form>
+                    </div>
+                    {% endif %}
+
+                    {% if booking.status in ['pending', 'approved'] and current_user.user_id == booking.requester_id %}
+                    <div class="dashboard-card mb-4 action-card">
+                        <h5 class="mb-3">Manage Booking</h5>
+                        <form method="POST" action="{{ url_for('booking.cancel', booking_id=booking.booking_id) }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="btn btn-warning w-100" data-confirm-delete>
+                                <i class="bi bi-x-circle"></i> Cancel Booking
+                            </button>
+                        </form>
+                    </div>
+                    {% endif %}
+
+                    {% if can_mark_complete_owner or can_mark_complete_requester %}
+                    <div class="dashboard-card mb-4 action-card">
+                        <h5 class="mb-3">Complete Booking</h5>
+                        <form method="POST" action="{{ url_for('booking.complete', booking_id=booking.booking_id) }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="btn btn-success w-100">
+                                <i class="bi bi-flag"></i>
+                                {% if can_mark_complete_owner and not can_mark_complete_requester %}
+                                    Mark as Completed
+                                {% elif can_mark_complete_requester and not can_mark_complete_owner %}
+                                    Confirm Completion
+                                {% else %}
+                                    Mark as Completed
+                                {% endif %}
+                            </button>
+                        </form>
+                    </div>
+                    {% elif booking.status == 'approved' %}
+                    <div class="alert alert-light small">
+                        <i class="bi bi-info-circle"></i> Completion will be available once the reservation has ended.
+                    </div>
+                    {% endif %}
+
+                    <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary w-100">
+                        <i class="bi bi-arrow-left"></i> Back to Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.booking-hero {
+    background: linear-gradient(120deg, #f8fbff, #eef4ff);
+    border-radius: 18px;
+    padding: 2rem;
+    border: 1px solid var(--border-light);
+    box-shadow: 0 15px 35px rgba(15, 23, 42, 0.08);
+}
+
+.booking-hero-top {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 1.5rem;
+}
+
+.hero-eyebrow {
+    font-size: 0.75rem;
+    letter-spacing: 0.25em;
+    color: var(--muted);
+    font-weight: 600;
+}
+
+.hero-title {
+    font-size: 2.1rem;
+    font-weight: 700;
+    color: var(--ink);
+}
+
+.hero-date {
+    font-weight: 600;
+    color: var(--ink);
+}
+
+.hero-location {
+    font-size: 0.95rem;
+}
+
+.status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    border-radius: 999px;
+    padding: 0.35rem 1.25rem;
+    border: 1px solid var(--border-light);
+    font-weight: 600;
+    background: #fff;
+    text-transform: capitalize;
+    box-shadow: 0 6px 18px rgba(15, 23, 42, 0.08);
+}
+
+.status-pill.status-pending {
+    color: #a07902;
+    border-color: rgba(255, 193, 7, 0.45);
+    background: rgba(255, 224, 138, 0.25);
+}
+
+.status-pill.status-approved,
+.status-pill.status-completed {
+    color: var(--success);
+    border-color: rgba(25, 135, 84, 0.4);
+    background: rgba(25, 135, 84, 0.08);
+}
+
+.status-pill.status-rejected {
+    color: #c1121f;
+    border-color: rgba(193, 18, 31, 0.35);
+    background: rgba(248, 215, 218, 0.5);
+}
+
+.status-pill.status-cancelled {
+    color: #5c6c7a;
+    border-color: rgba(108, 117, 125, 0.4);
+    background: rgba(222, 226, 230, 0.5);
+}
+
+.dot-separator {
+    display: inline-flex;
+    align-items: center;
+}
+
+.dot-separator::before {
+    content: '•';
+    color: var(--muted);
+}
+
+.hero-meta {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1rem;
+}
+
+.hero-chip {
+    border: 1px solid var(--border-light);
+    border-radius: 14px;
+    padding: 1rem 1.25rem;
+    background: #fff;
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.05);
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.hero-chip span {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--muted);
+    font-weight: 600;
+}
+
+.hero-chip strong {
+    font-size: 1.1rem;
+    color: var(--ink);
+}
+
+.hero-chip.muted {
+    background: #f4f6fb;
+}
+
+.dashboard-card {
+    background: #fff;
+    border: 1px solid var(--border-light);
+    border-radius: 16px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+}
+
+.icon-box {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    flex-shrink: 0;
+}
+
+.info-grid {
+    display: grid;
+    gap: 1.5rem;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    align-items: start;
+}
+
+.info-grid.two-column {
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+
+@media (min-width: 768px) {
+    .info-grid.two-column {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+.info-item {
+    display: flex;
+    flex-direction: column;
+    border-bottom: 1px solid var(--border-light);
+    padding-bottom: 1rem;
+    min-height: 60px;
+}
+
+.info-item:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.info-label {
+    display: block;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--muted);
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+}
+
+.info-value {
+    font-size: 1rem;
+    color: var(--ink);
+    font-weight: 500;
+}
+
+.contact-tile {
+    border: 1px dashed var(--border-light);
+    border-radius: 16px;
+    padding: 1.25rem 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    background: linear-gradient(120deg, #ffffff, #f8fbff);
+}
+
+.contact-tile .badge {
+    font-size: 0.75rem;
+}
+
+.avatar-circle {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #dbeafe, #e0e7ff);
+    color: #1d4ed8;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.requester-avatar {
+    background: linear-gradient(135deg, #ffe8c7, #ffd5a1);
+    color: #a35500;
+}
+
+.schedule-timeline {
+    position: relative;
+    padding: 1.5rem 1.5rem 1.5rem 2.5rem;
+    background: linear-gradient(180deg, rgba(248, 250, 252, 0.6), #fff);
+    border-radius: 16px;
+    border: 1px solid var(--border-light);
+}
+
+.schedule-timeline::before {
+    content: '';
+    position: absolute;
+    left: 24px;
+    top: 36px;
+    bottom: 36px;
+    width: 2px;
+    background: linear-gradient(to bottom, var(--success), var(--danger));
+}
+
+.schedule-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 1.25rem;
+    margin-bottom: 1.75rem;
+    position: relative;
+    padding-left: 0.5rem;
+}
+
+.schedule-item:last-child {
+    margin-bottom: 0;
+}
+
+.schedule-marker {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 3px solid white;
+    position: absolute;
+    left: -1.25rem;
+    top: 0.4rem;
+    box-shadow: 0 0 0 2px currentColor;
+    z-index: 1;
+}
+
+.schedule-marker.start {
+    color: var(--success);
+}
+
+.schedule-marker.end {
+    color: var(--danger);
+}
+
+.schedule-label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--muted);
+    font-weight: 600;
+}
+
+.schedule-value {
+    font-size: 1rem;
+    color: var(--ink);
+    font-weight: 600;
+}
+
+.timeline-note {
+    background: #f8fafc;
+    border: 1px dashed var(--border-light);
+    border-radius: 12px;
+    padding: 0.875rem 1.25rem;
+    font-size: 0.85rem;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+}
+
+.soft-highlight {
+    background: linear-gradient(135deg, #fdfefe, #f2f7ff);
+    border: 1px solid var(--border-light);
+    border-radius: 16px;
+    padding: 1.25rem 1.5rem;
+}
+
+.soft-highlight .icon-box {
+    width: 40px;
+    height: 40px;
+    font-size: 1.1rem;
+}
+
+.history-card .history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.history-list li {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--border-light);
+    gap: 1rem;
+}
+
+.history-list li:last-child {
+    border-bottom: none;
+}
+
+.history-label {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    font-weight: 600;
+    min-width: 120px;
+    flex-shrink: 0;
+}
+
+.history-value {
+    font-weight: 600;
+    color: var(--ink);
+    text-align: right;
+    flex-grow: 1;
+}
+
+.calendar-card {
+    background: linear-gradient(135deg, #f8fbff, #ffffff);
+}
+
+.calendar-actions {
+    align-items: center;
+}
+
+.calendar-actions form {
+    margin: 0;
+}
+
+.calendar-footnote {
+    border-top: 1px dashed var(--border-light);
+    padding-top: 1rem;
+    margin-top: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.requester-card .requester-intro {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.meta-pair {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border-light);
+    padding: 0.75rem 0;
+    gap: 1rem;
+}
+
+.meta-pair:last-child {
+    border-bottom: none;
+}
+
+.meta-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    font-weight: 600;
+}
+
+.meta-value {
+    font-weight: 600;
+    color: var(--ink);
+}
+
+.action-card textarea {
+    border-radius: 12px;
+    font-size: 0.9rem;
+}
+
+.action-card button {
+    border-radius: 999px;
+    font-weight: 600;
+}
+
+.bg-primary-subtle {
+    background-color: rgba(13, 110, 253, 0.1) !important;
+}
+
+.bg-success-subtle {
+    background-color: rgba(25, 135, 84, 0.1) !important;
+}
+
+.bg-info-subtle {
+    background-color: rgba(13, 202, 240, 0.1) !important;
+}
+
+.bg-warning-subtle {
+    background-color: rgba(255, 193, 7, 0.1) !important;
+}
+
+.bg-secondary-subtle {
+    background-color: rgba(108, 117, 125, 0.1) !important;
+}
+
+.border-primary-subtle {
+    border-color: rgba(13, 110, 253, 0.35) !important;
+}
+
+.text-primary {
+    color: #0d6efd !important;
+}
+
+.text-success {
+    color: var(--success) !important;
+}
+
+.text-info {
+    color: #0dcaf0 !important;
+}
+
+.text-warning {
+    color: #ffc107 !important;
+}
+
+.text-secondary {
+    color: #6c757d !important;
+}
+
+.operating-hours-container {
+    background: linear-gradient(180deg, rgba(248, 250, 252, 0.5), #fff);
+    border: 1px solid var(--border-light);
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.operating-hours-schedule {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    padding: 0;
+    background: transparent;
+    border-radius: 0;
+    border: none;
+}
+
+.operating-hours-day {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.875rem 1.25rem;
+    border-bottom: 1px solid var(--border-light);
+    transition: background-color 0.2s ease;
+    min-height: 52px;
+    gap: 1.5rem;
+}
+
+.operating-hours-day:first-child {
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+}
+
+.operating-hours-day:last-child {
+    border-bottom: none;
+    border-bottom-left-radius: 8px;
+    border-bottom-right-radius: 8px;
+}
+
+.operating-hours-day:hover {
+    background-color: rgba(248, 250, 252, 0.8);
+}
+
+.operating-hours-day-name {
+    font-weight: 600;
+    color: var(--ink);
+    font-size: 0.9375rem;
+    min-width: 130px;
+    flex-shrink: 0;
+    letter-spacing: 0.01em;
+}
+
+.operating-hours-time {
+    font-size: 0.875rem;
+    font-weight: 600;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    white-space: normal;
+    text-align: center;
+    min-width: 160px;
+    max-width: 220px;
+    flex-shrink: 0;
+    line-height: 1.4;
+}
+
+.operating-hours-time.operating-hours-open {
+    color: #198754;
+    background-color: rgba(25, 135, 84, 0.12);
+    border: 1px solid rgba(25, 135, 84, 0.25);
+}
+
+.operating-hours-time.operating-hours-closed {
+    color: #6c757d;
+    background-color: rgba(108, 117, 125, 0.08);
+    border: 1px solid rgba(108, 117, 125, 0.2);
+    font-style: italic;
+}
+
+.operating-hours-note {
+    background: #f8fafc;
+    border: 1px dashed var(--border-light);
+    border-radius: 8px;
+    padding: 0.875rem 1.25rem;
+    font-size: 0.85rem;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+@media (max-width: 576px) {
+    .booking-hero {
+        padding: 1.5rem;
+    }
+
+    .hero-title {
+        font-size: 1.6rem;
+    }
+
+    .status-pill {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .operating-hours-day {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.75rem;
+        padding: 1rem;
+    }
+
+    .operating-hours-day-name {
+        min-width: auto;
+        width: 100%;
+    }
+
+    .operating-hours-time {
+        width: 100%;
+        min-width: auto;
+        max-width: 100%;
+        text-align: center;
+    }
+
+    .history-list li {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+
+    .history-value {
+        text-align: left;
+    }
+
+    .info-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .dashboard-card {
+        padding: 1.25rem;
+    }
+}
+</style>
+{% endblock %}

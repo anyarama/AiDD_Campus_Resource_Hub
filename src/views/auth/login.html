@@ -1,0 +1,102 @@
+{% extends "layout.html" %}
+{% block title %}Login - Campus Resource Hub{% endblock %}
+{% block content %}
+{% set login_gallery = [
+    'images/login/20250805_CampusScenics_JB_0030.jpg',
+    'images/login/20250805_CampusScenics_JB_0093.jpg',
+    'images/login/20250805_CampusScenics_JB_0149.jpg',
+    'images/login/20250805_CampusScenics_JB_0160.jpg'
+] %}
+{% set hero_image_path = login_gallery | random %}
+{% set hero_image_url = url_for('static', filename=hero_image_path) %}
+<section class="py-5">
+    <div class="container">
+        <div class="row g-4 align-items-stretch">
+            <div class="col-lg-6 d-none d-lg-flex">
+                <div class="card-highlight h-100 w-100 p-0 overflow-hidden position-relative text-white">
+                    <img src="{{ hero_image_url }}"
+                         alt="Indiana University campus view"
+                         class="w-100 h-100"
+                         style="object-fit: cover;">
+                    <div class="position-absolute top-0 start-0 end-0 bottom-0"
+                         style="background: linear-gradient(180deg, rgba(210, 110, 110, 0.32), rgba(79, 8, 8, 0.78));"></div>
+                    <div class="position-absolute top-0 start-0 end-0 bottom-0 d-flex flex-column justify-content-center align-items-center text-center gap-3 p-4 p-xl-5">
+                        <div class="p-3 rounded" style="background: rgba(255,255,255,0.18); backdrop-filter: blur(4px);">
+                            <img src="{{ url_for('static', filename='images/login/Indiana_Hoosiers_logo.svg.png') }}"
+                                 alt="Indiana University logo"
+                                 style="max-width: 120px; height: auto; display: block; filter: drop-shadow(0 6px 18px rgba(0,0,0,0.25));">
+                        </div>
+                        <div class="text-uppercase fw-semibold" style="letter-spacing: 0.32em; font-size: 1.15rem; color: #ffffff;">Indiana University</div>
+                        <div>
+                            <p class="text-uppercase fw-semibold mb-2" style="letter-spacing: 0.25em; color: rgba(255,255,255,0.9);">Campus Resource Hub</p>
+                            <h2 class="heading-3 mb-2" style="color: #fff;">Reserve the spaces that move your work forward.</h2>
+                            <p class="mb-0" style="color: rgba(255,255,255,0.85);">Trusted by Kelley students, faculty, and staff for fast access to rooms, equipment, and services.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-6 d-flex">
+                <div class="card-surface shadow-lg p-4 p-lg-5 w-100 d-flex flex-column">
+                    <div class="text-center mb-4">
+                        <span class="d-inline-flex align-items-center justify-content-center mb-3"
+                              style="width: 56px; height: 56px; border-radius: var(--radius-pill); background: rgba(153,0,0,0.08); color: var(--color-primary);">
+                            <i class="bi bi-lock-fill"></i>
+                        </span>
+                        <p class="text-uppercase text-muted mb-1" style="letter-spacing: 0.25em;">Secure login</p>
+                        <h1 class="heading-3 mb-1">Welcome back</h1>
+                        <p class="text-muted mb-0">Sign in with your IU email to continue.</p>
+                    </div>
+                    <form method="POST" action="{{ url_for('auth.login') }}" class="d-flex flex-column gap-3">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <div>
+                            <label for="email" class="form-label">
+                                Email Address
+                            </label>
+                            <input type="email"
+                                   class="form-field"
+                                   id="email"
+                                   name="email"
+                                   placeholder="your.name@iu.edu"
+                                   required
+                                   autocomplete="email"
+                                   autofocus>
+                        </div>
+                        <div>
+                            <label for="password" class="form-label">
+                                Password
+                            </label>
+                            <input type="password"
+                                   class="form-field"
+                                   id="password"
+                                   name="password"
+                                   placeholder="Enter your password"
+                                   required
+                                   autocomplete="current-password">
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input" id="remember" name="remember">
+                                <label class="form-check-label text-muted" for="remember">Keep me signed in</label>
+                            </div>
+                            <a href="{{ url_for('auth.register') }}" class="text-decoration-none fw-semibold" style="color: var(--color-primary);">
+                                Need access?
+                            </a>
+                        </div>
+                        <button type="submit" class="btn-primary-iu w-100">
+                            <i class="bi bi-box-arrow-in-right me-2"></i>Sign In
+                        </button>
+                    </form>
+                    <div class="auth-divider mt-4">
+                        <span>or</span>
+                    </div>
+                    <div class="text-center">
+                        <a href="{{ url_for('auth.register') }}" class="btn-ghost-iu w-100" style="justify-content: center;">
+                            Create an account
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

@@ -1,0 +1,194 @@
+{% extends "layout.html" %}
+
+{% block content %}
+{% set homepage_gallery = [
+    'images/homepage/20250618_Campus_Scenics_CM_007-HDR.jpg',
+    'images/homepage/20250710Summer_Scenics_CM_1061.jpg',
+    'images/homepage/20250710Summer_Scenics_CM_1079.jpg',
+    'images/homepage/20250710Summer_Scenics_CM_1094.jpg',
+    'images/homepage/20250718_BLCampusScenics_WC_045.JPG',
+    'images/homepage/20250718_BLCampusScenics_WC_079.JPG',
+    'images/homepage/20250718_BLCampusScenics_WC_161.JPG',
+    'images/homepage/20250729_Summer_Scenics_CM_6868.jpg',
+    'images/homepage/20250805_CampusScenics_JB_0023.jpg',
+    'images/homepage/20250805_CampusScenics_JB_0050.jpg',
+    'images/homepage/20250805_CampusScenics_JB_0081.jpg'
+] %}
+{% set hero_image_url = url_for('static', filename=homepage_gallery | random) %}
+<section class="hero hero-illustrated fade-in" style="--hero-illustration: url('{{ hero_image_url }}');">
+    <div class="container">
+        <div class="row align-items-center g-5">
+            <div class="col-lg-6">
+                <p class="hero-kicker text-uppercase mb-3 text-crimson fw-bold">Indiana University Bloomington</p>
+                <h1 class="display-4 fw-bold mb-5" style="line-height: 1.2;">Schedule campus spaces with the official Campus Resource Hub.</h1>
+                <ul class="hero-highlights list-unstyled mb-5" style="font-size: 1rem;">
+                    <li class="mb-2"><i class="bi bi-check-circle-fill me-2"></i> Live availability for rooms, labs, and equipment</li>
+                    <li class="mb-2"><i class="bi bi-people-fill me-2"></i> Built-in approvals aligned to campus policy</li>
+                    <li class="mb-2"><i class="bi bi-chat-dots-fill me-2"></i> Direct messaging with facility teams</li>
+                </ul>
+                <div class="hero-actions d-flex flex-wrap gap-3 mb-4">
+                    <a href="{{ url_for('resource.list_resources') }}" class="btn btn-primary btn-lg shadow-lg">
+                        <i class="bi bi-search me-2"></i> Browse availability
+                    </a>
+                    {% if not current_user.is_authenticated %}
+                        <a href="{{ url_for('auth.register') }}" class="btn btn-outline-secondary btn-lg">
+                            Request an account
+                        </a>
+                    {% else %}
+                        <a href="{{ url_for('resource.create') }}" class="btn btn-outline-secondary btn-lg">
+                            Publish a resource
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="stat-grid" style="grid-template-columns: repeat(2, 1fr);">
+                    <div class="stat-card text-center stat-card--crimson">
+                        <div class="mb-3">
+                            <i class="bi bi-building" style="font-size: 2.5rem; color: var(--iu-crimson);"></i>
+                        </div>
+                        <div class="stat-value" style="font-size: 2.5rem; color: var(--iu-crimson); font-weight: 700;">{{ total_resources_count }}+</div>
+                        <div class="stat-label" style="font-size: 0.9rem; color: var(--muted); font-weight: 600;">Campus inventory</div>
+                        <p class="text-muted small mb-0 mt-2">Study rooms, labs, event spaces, and equipment ready to reserve.</p>
+                    </div>
+                    <div class="stat-card text-center stat-card--gold">
+                        <div class="mb-3">
+                            <i class="bi bi-clock-history" style="font-size: 2.5rem; color: var(--iu-gold);"></i>
+                        </div>
+                        <div class="stat-value" style="font-size: 2.5rem; color: var(--iu-gold); font-weight: 700;">24/7</div>
+                        <div class="stat-label" style="font-size: 0.9rem; color: var(--muted); font-weight: 600;">Live availability</div>
+                        <p class="text-muted small mb-0 mt-2">Book instantly or submit a routed request.</p>
+                    </div>
+                    <div class="stat-card text-center stat-card--sage">
+                        <div class="mb-3">
+                            <i class="bi bi-chat-dots" style="font-size: 2.5rem; color: var(--success);"></i>
+                        </div>
+                        <div class="stat-value" style="font-size: 2.5rem; color: var(--success); font-weight: 700;"><i class="bi bi-check-circle-fill" style="font-size: 2rem;"></i></div>
+                        <div class="stat-label" style="font-size: 0.9rem; color: var(--muted); font-weight: 600;">Connected messaging</div>
+                        <p class="text-muted small mb-0 mt-2">Chat with resource owners inside every booking thread.</p>
+                    </div>
+                    <div class="stat-card text-center stat-card--indigo">
+                        <div class="mb-3">
+                            <i class="bi bi-shield-check" style="font-size: 2.5rem; color: var(--info);"></i>
+                        </div>
+                        <div class="stat-value" style="font-size: 2.5rem; color: var(--info); font-weight: 700;"><i class="bi bi-star-fill" style="font-size: 2rem;"></i></div>
+                        <div class="stat-label" style="font-size: 0.9rem; color: var(--muted); font-weight: 600;">Smart workflows</div>
+                        <p class="text-muted small mb-0 mt-2">Role-based approvals with automatic conflict checks.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+{% if featured_resources %}
+<section class="featured-section translucent-panel" style="padding: 5rem 0;">
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-end flex-wrap gap-3 mb-5">
+            <div>
+                <p class="text-uppercase small text-crimson mb-1 fw-bold" style="letter-spacing: 0.15em;">IU Bloomington favorites</p>
+                <h2 class="mb-0 fw-bold" style="font-size: 2rem; line-height: 1.2;">Popular this week</h2>
+            </div>
+            <a href="{{ url_for('resource.list_resources') }}" class="btn btn-outline-secondary" style="white-space: nowrap;">
+                View all resources <i class="bi bi-arrow-right ms-2"></i>
+            </a>
+        </div>
+        <div class="row g-4 translucent-grid">
+            {% for item in featured_resources %}
+            <div class="col-md-6 col-lg-4">
+                <div class="resource-card resource-card--glass h-100 d-flex flex-column">
+                    {% if item.resource.images %}
+                        {% set first_image = item.resource.images.split(',')[0].strip() %}
+                        {% if first_image %}
+                            {% if first_image.startswith('http') %}
+                                {% set image_src = first_image %}
+                            {% elif '/' in first_image %}
+                                {% set image_src = url_for('static', filename=first_image) %}
+                            {% else %}
+                                {# Check if image has timestamp prefix (uploaded) or is a simple name (sample image) #}
+                                {% set has_timestamp = first_image|length > 15 and first_image[8:9] == '_' %}
+                                {% if has_timestamp %}
+                                    {% set image_src = url_for('static', filename='uploads/' + first_image) %}
+                                {% else %}
+                                    {% set image_src = url_for('static', filename='images/' + first_image) %}
+                                {% endif %}
+                            {% endif %}
+                            <div class="resource-image" data-lazy-bg="{{ image_src }}"></div>
+                        {% else %}
+                            <div class="resource-image resource-placeholder">
+                                <i class="bi bi-building"></i>
+                            </div>
+                        {% endif %}
+                    {% else %}
+                        <div class="resource-image resource-placeholder">
+                            <i class="bi bi-building"></i>
+                        </div>
+                    {% endif %}
+                    <div class="resource-body flex-grow-1 d-flex flex-column">
+                        <div class="resource-header mb-3">
+                            <p class="resource-category text-uppercase text-muted small mb-1">{{ item.resource.category }}</p>
+                            <h3 class="resource-title h5 mb-2">{{ item.resource.title }}</h3>
+                            <div class="resource-badges d-flex flex-wrap gap-2">
+                                {% if item.avg_rating > 0 %}
+                                <span class="badge bg-warning-subtle text-dark border border-warning-subtle">
+                                    <i class="bi bi-star-fill text-warning"></i> {{ item.avg_rating }}
+                                </span>
+                                {% endif %}
+                                {% if item.is_top_rated %}
+                                <span class="badge bg-success-subtle text-success border border-success-subtle">
+                                    <i class="bi bi-award"></i> Top rated
+                                </span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="resource-meta mb-3">
+                            <p class="resource-location text-muted small mb-2 d-flex align-items-center">
+                                <i class="bi bi-geo-alt me-1"></i>
+                                <span>{{ item.resource.location }}</span>
+                            </p>
+                            {% if item.resource.capacity %}
+                            <p class="resource-capacity text-muted small mb-0 d-flex align-items-center">
+                                <i class="bi bi-people me-1"></i>
+                                <span>{{ item.resource.capacity }} seats</span>
+                            </p>
+                            {% endif %}
+                        </div>
+                        <p class="resource-description text-muted flex-grow-1 mb-3">{{ item.resource.description|default('No description provided.')|truncate(120) }}</p>
+                        <div class="resource-action mt-auto">
+                            <a href="{{ url_for('resource.detail', resource_id=item.resource.resource_id) }}" class="btn btn-outline-primary w-100">
+                                View details
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endif %}
+
+<section class="cta-section translucent-panel" style="padding: 5rem 0;">
+    <div class="container">
+        <div class="cta-card text-center shadow-lg" style="background: linear-gradient(135deg, var(--iu-surface) 0%, var(--iu-surface-alt) 100%);">
+            <p class="text-uppercase small text-crimson mb-3 fw-bold" style="letter-spacing: 0.15em;">Ready to get started?</p>
+            <h2 class="mb-4 fw-bold" style="font-size: 2rem; line-height: 1.3;">Find the perfect space for your next class, event, or project.</h2>
+            <p class="mb-5" style="font-size: 1.125rem; color: var(--ink-soft); max-width: 600px; margin-left: auto; margin-right: auto;">Browse available resources or connect with facility managers to find exactly what you need.</p>
+            <div class="d-flex justify-content-center gap-3 flex-wrap">
+                <a href="{{ url_for('resource.list_resources') }}" class="btn btn-primary btn-lg shadow-lg">
+                    <i class="bi bi-search me-2"></i> Explore resources
+                </a>
+                {% if current_user.is_authenticated %}
+                <a href="{{ url_for('resource.create') }}" class="btn btn-outline-secondary btn-lg">
+                    <i class="bi bi-plus-circle me-2"></i> List a resource
+                </a>
+                {% else %}
+                <a href="{{ url_for('auth.register') }}" class="btn btn-outline-secondary btn-lg">
+                    <i class="bi bi-person-plus me-2"></i> Get started free
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

@@ -1,0 +1,431 @@
+{% extends "layout.html" %}
+{% block title %}{{ resource.title }}{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row">
+        <!-- Main Content -->
+        <div class="col-lg-8">
+            <div class="dashboard-card">
+                {% if show_unpublished_notice %}
+                <div class="alert alert-warning d-flex align-items-start gap-2 mb-4">
+                    <div class="flex-shrink-0">
+                        <i class="bi bi-eye-slash-fill fs-4"></i>
+                    </div>
+                    <div>
+                        <strong>This resource is currently {{ resource.status|title }}.</strong>
+                        It is hidden from students until you publish it from the edit screen.
+                    </div>
+                </div>
+                {% endif %}
+                <!-- Hero Image Gallery -->
+                {% if resource.images %}
+                <div class="resource-hero">
+                    <div id="resourceCarousel" class="carousel slide resource-carousel">
+                        <div class="carousel-inner">
+                            {% for img in resource.images.split(',') %}
+                            {% set trimmed = img.strip() %}
+                            {% if trimmed %}
+                                {% if trimmed.startswith('http') %}
+                                    {% set image_src = trimmed %}
+                                {% elif '/' in trimmed %}
+                                    {% set image_src = url_for('static', filename=trimmed) %}
+                                {% else %}
+                                    {# Check if image has timestamp prefix (uploaded) or is a simple name (sample image) #}
+                                    {% set has_timestamp = trimmed|length > 15 and trimmed[8:9] == '_' %}
+                                    {% if has_timestamp %}
+                                        {% set image_src = url_for('static', filename='uploads/' + trimmed) %}
+                                    {% else %}
+                                        {% set image_src = url_for('static', filename='images/' + trimmed) %}
+                                    {% endif %}
+                                {% endif %}
+                                <div class="carousel-item {% if loop.first %}active{% endif %}">
+                                    <img {% if loop.first %}src="{{ image_src }}"{% else %}data-src="{{ image_src }}" loading="lazy"{% endif %}
+                                         class="d-block w-100 resource-detail-img"
+                                         alt="{{ resource.title }} - Image {{ loop.index }}">
+                                </div>
+                            {% endif %}
+                            {% endfor %}
+                        </div>
+                        {% if resource.images.split(',')|length > 1 %}
+                        <button class="carousel-control-prev" type="button" data-bs-target="#resourceCarousel" data-bs-slide="prev" aria-label="Previous image">
+                            <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                        </button>
+                        <button class="carousel-control-next" type="button" data-bs-target="#resourceCarousel" data-bs-slide="next" aria-label="Next image">
+                            <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                        </button>
+                        <div class="carousel-indicators">
+                            {% for img in resource.images.split(',') %}
+                            {% if img.strip() %}
+                            <button type="button" data-bs-target="#resourceCarousel" data-bs-slide-to="{{ loop.index0 }}"
+                                    {% if loop.first %}class="active" aria-current="true"{% endif %}
+                                    aria-label="Slide {{ loop.index }}"></button>
+                            {% endif %}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Resource Header -->
+                <div class="resource-header">
+                    <h1 class="resource-title">{{ resource.title }}</h1>
+
+                    <div class="resource-badges">
+                        <span class="resource-badge resource-badge-category">
+                            <i class="bi bi-tag-fill"></i>
+                            {{ resource.category }}
+                        </span>
+                        <span class="resource-badge resource-badge-location">
+                            <i class="bi bi-geo-alt-fill"></i>
+                            {{ resource.location }}
+                        </span>
+                        {% if resource.capacity %}
+                        <span class="resource-badge resource-badge-capacity">
+                            <i class="bi bi-people-fill"></i>
+                            Capacity: {{ resource.capacity }}
+                        </span>
+                        {% endif %}
+                        {% if resource.is_restricted %}
+                        <span class="resource-badge resource-badge-restricted">
+                            <i class="bi bi-shield-lock-fill"></i>
+                            Restricted Access
+                        </span>
+                        {% endif %}
+                        {% if avg_rating > 0 %}
+                        <span class="resource-badge resource-badge-rating">
+                            <i class="bi bi-star-fill"></i>
+                            {{ avg_rating }} ({{ review_count }} reviews)
+                        </span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Description -->
+                <div class="resource-section">
+                    <h3 class="resource-section-title">
+                        <i class="bi bi-file-text"></i>
+                        About This Resource
+                    </h3>
+                    <p class="resource-description">{{ resource.description }}</p>
+                </div>
+
+                <!-- Equipment -->
+                {% if resource.equipment %}
+                <div class="resource-section">
+                    <h3 class="resource-section-title">
+                        <i class="bi bi-tools"></i>
+                        Equipment & Amenities
+                    </h3>
+                    <div class="equipment-tags">
+                        {% for item in resource.equipment.split(',') %}
+                        <span class="equipment-tag">
+                            <i class="bi bi-check-circle-fill"></i>
+                            {{ item.strip() }}
+                        </span>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Availability Schedule -->
+                {% if schedule_display %}
+                <div class="resource-section">
+                    <h3 class="resource-section-title">
+                        <i class="bi bi-clock"></i>
+                        Operating Hours
+                    </h3>
+                    <div class="alert alert-info mb-3">
+                        <i class="bi bi-info-circle me-2"></i>
+                        <strong>This resource is available for booking during the hours listed below.</strong>
+                    </div>
+                    <div class="availability-schedule">
+                        {% for line in schedule_display %}
+                        {% set parts = line.split(':', 1) %}
+                        <div class="schedule-day">
+                            <span class="schedule-day-name">{{ parts[0] }}</span>
+                            {% if 'Closed' in line %}
+                            <span class="schedule-day-hours schedule-day-closed">{{ parts[1].strip() }}</span>
+                            {% else %}
+                            <span class="schedule-day-hours schedule-day-open">{{ parts[1].strip() }}</span>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Booking Rules -->
+                {% if booking_rules %}
+                <div class="resource-section">
+                    <h3 class="resource-section-title">
+                        <i class="bi bi-list-check"></i>
+                        Booking Guidelines
+                    </h3>
+                    <div class="booking-rules-grid">
+                        {% if booking_rules.min_duration %}
+                        <div class="booking-rule-card">
+                            <div class="booking-rule-icon">
+                                <i class="bi bi-hourglass-bottom"></i>
+                            </div>
+                            <div class="booking-rule-value">{{ booking_rules.min_duration.split()[0] }}</div>
+                            <div class="booking-rule-label">Minimum Duration</div>
+                        </div>
+                        {% endif %}
+
+                        {% if booking_rules.max_duration %}
+                        <div class="booking-rule-card">
+                            <div class="booking-rule-icon">
+                                <i class="bi bi-hourglass-top"></i>
+                            </div>
+                            <div class="booking-rule-value">{{ booking_rules.max_duration.split()[0] }}</div>
+                            <div class="booking-rule-label">Maximum Duration</div>
+                        </div>
+                        {% endif %}
+
+                        {% if booking_rules.increment %}
+                        <div class="booking-rule-card">
+                            <div class="booking-rule-icon">
+                                <i class="bi bi-clock-history"></i>
+                            </div>
+                            <div class="booking-rule-value">{{ booking_rules.increment.split()[0] }}</div>
+                            <div class="booking-rule-label">Time Increments</div>
+                        </div>
+                        {% endif %}
+
+                        {% if booking_rules.lead_time %}
+                        <div class="booking-rule-card">
+                            <div class="booking-rule-icon">
+                                <i class="bi bi-calendar-check"></i>
+                            </div>
+                            <div class="booking-rule-value">{{ booking_rules.lead_time.split()[0] }}</div>
+                            <div class="booking-rule-label">Advance Notice</div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Action Buttons -->
+                {% if current_user.is_authenticated %}
+                <div class="resource-actions">
+                    <a href="{{ url_for('booking.create', resource_id=resource.resource_id) }}" class="btn-resource-primary">
+                        <i class="bi bi-calendar-plus"></i>
+                        Book This Resource
+                    </a>
+                    {% if current_user.user_id != resource.owner_id %}
+                    <a href="{{ url_for('message.send', receiver_id=resource.owner_id, resource_id=resource.resource_id) }}" class="btn-resource-secondary">
+                        <i class="bi bi-chat-dots"></i>
+                        Message Owner
+                    </a>
+                    {% endif %}
+                    {% if current_user.user_id == resource.owner_id or current_user.role == 'admin' %}
+                    <a href="{{ url_for('resource.edit', resource_id=resource.resource_id) }}" class="btn-resource-secondary">
+                        <i class="bi bi-pencil"></i>
+                        Edit Resource
+                    </a>
+                    <form method="POST" action="{{ url_for('resource.delete', resource_id=resource.resource_id) }}" class="d-inline">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn btn-outline-danger" style="padding: 0.875rem 1.75rem; font-weight: 600;" data-confirm-delete>
+                            <i class="bi bi-trash"></i>
+                            Delete
+                        </button>
+                    </form>
+                    {% endif %}
+                </div>
+                {% else %}
+                <div class="alert-signin">
+                    <i class="bi bi-person-circle"></i>
+                    <p class="mb-0">
+                        <a href="{{ url_for('auth.login') }}" class="fw-semibold">Sign in</a> to book or review this resource.
+                    </p>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Reviews Section -->
+            <div class="dashboard-card mt-4">
+                <div class="reviews-header">
+                    <h4 class="mb-0">Reviews & Ratings</h4>
+                    {% if current_user.is_authenticated and not has_reviewed %}
+                    <a href="{{ url_for('review.create', resource_id=resource.resource_id) }}" class="btn btn-sm btn-primary">
+                        <i class="bi bi-star"></i> Write a Review
+                    </a>
+                    {% endif %}
+                </div>
+
+                {% if stats and review_count > 0 %}
+                <div class="reviews-summary mb-4">
+                    <div class="reviews-average">
+                        <div class="reviews-average-score">{{ avg_rating }}</div>
+                        <div class="reviews-average-stars">
+                            {% for _ in range(avg_rating|int) %}<i class="bi bi-star-fill"></i>{% endfor %}
+                            {% if avg_rating % 1 >= 0.5 %}<i class="bi bi-star-half"></i>{% endif %}
+                            {% for _ in range(5 - ((avg_rating + 0.5)|int)) %}<i class="bi bi-star"></i>{% endfor %}
+                        </div>
+                        <div class="reviews-average-count">{{ review_count }} reviews</div>
+                    </div>
+
+                    <div class="reviews-breakdown">
+                        {% set total = review_count %}
+                        {% for rating in [5, 4, 3, 2, 1] %}
+                        {% set count = stats['%s_star' % ['five', 'four', 'three', 'two', 'one'][5-rating]]|default(0) %}
+                        {% set percentage = (count / total * 100) if total > 0 else 0 %}
+                        <div class="review-bar">
+                            <span class="review-bar-label">{{ rating }} stars</span>
+                            <div class="review-bar-track">
+                                <div class="review-bar-fill" style="width: {{ percentage }}%"></div>
+                            </div>
+                            <span class="review-bar-count">{{ count }}</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Individual Reviews -->
+                {% for review in reviews %}
+                <div class="review-card">
+                    <div class="review-header">
+                        <div class="review-avatar">
+                            <i class="bi bi-person-circle"></i>
+                        </div>
+                        <div class="review-meta flex-grow-1">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <h6 class="review-author mb-0">{{ review.reviewer_name }}</h6>
+                                    <div class="review-date text-muted small">{{ review.timestamp|datetime_format }}</div>
+                                </div>
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="star-rating">
+                                        {% for _ in range(review.rating) %}<i class="bi bi-star-fill"></i>{% endfor %}
+                                        {% for _ in range(5 - review.rating) %}<i class="bi bi-star"></i>{% endfor %}
+                                    </div>
+                                    {% if current_user.is_authenticated and (current_user.user_id == review.reviewer_id or current_user.role == 'admin') %}
+                                    <form method="POST" action="{{ url_for('review.delete', review_id=review.review_id) }}" class="d-inline">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <button type="submit" class="btn btn-sm btn-link text-danger p-0" data-confirm-delete title="Delete review">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </form>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% if review.comment %}
+                    <div class="review-body">
+                        <p class="mb-0">{{ review.comment }}</p>
+                    </div>
+                    {% endif %}
+                    {% if current_user.is_authenticated and current_user.user_id != review.reviewer_id %}
+                    <div class="review-actions">
+                        <button class="btn btn-sm btn-link text-muted p-0" type="button" data-bs-toggle="collapse" data-bs-target="#reportReview{{ review.review_id }}" aria-expanded="false">
+                            <i class="bi bi-flag"></i> Report inappropriate content
+                        </button>
+                        <div class="collapse mt-2" id="reportReview{{ review.review_id }}">
+                            <form method="POST" action="{{ url_for('review.flag', review_id=review.review_id) }}" class="report-form">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <textarea class="form-control form-control-sm mb-2" name="reason" rows="2" placeholder="Please describe the issue..." required></textarea>
+                                <div class="d-flex gap-2">
+                                    <button type="submit" class="btn btn-sm btn-warning">Submit Report</button>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="collapse" data-bs-target="#reportReview{{ review.review_id }}">Cancel</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+                {% else %}
+                <div class="empty-state">
+                    <i class="bi bi-chat-square-text"></i>
+                    <p class="mb-0">No reviews yet. Be the first to share your experience!</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="col-lg-4">
+            <!-- Owner Card -->
+            <div class="owner-card mb-3">
+                <div class="owner-avatar">
+                    <i class="bi bi-person-fill"></i>
+                </div>
+                <h5 class="owner-name">{{ owner.name if owner else 'Resource Owner' }}</h5>
+                <p class="owner-role text-muted">{{ owner.role|capitalize if owner else 'Owner' }}</p>
+                <p class="owner-meta text-muted small">Listed {{ resource.created_at|datetime_format('%B %d, %Y at %I:%M %p') if resource.created_at else 'Recently' }}</p>
+                {% if current_user.is_authenticated and current_user.user_id != resource.owner_id %}
+                <a href="{{ url_for('message.send', receiver_id=resource.owner_id, resource_id=resource.resource_id) }}" class="btn btn-sm btn-primary">
+                    <i class="bi bi-envelope"></i> Send Message
+                </a>
+                {% endif %}
+            </div>
+
+            <!-- Quick Info Card -->
+            <div class="info-card">
+                <h5 class="info-card-title">Quick Information</h5>
+
+                <div class="info-item">
+                    <div class="info-item-icon">
+                        <i class="bi bi-tag-fill"></i>
+                    </div>
+                    <div class="info-item-content">
+                        <div class="info-item-label">Category</div>
+                        <div class="info-item-value">{{ resource.category }}</div>
+                    </div>
+                </div>
+
+                <div class="info-item">
+                    <div class="info-item-icon">
+                        <i class="bi bi-geo-alt-fill"></i>
+                    </div>
+                    <div class="info-item-content">
+                        <div class="info-item-label">Location</div>
+                        <div class="info-item-value">{{ resource.location }}</div>
+                    </div>
+                </div>
+
+                {% if resource.capacity %}
+                <div class="info-item">
+                    <div class="info-item-icon">
+                        <i class="bi bi-people-fill"></i>
+                    </div>
+                    <div class="info-item-content">
+                        <div class="info-item-label">Capacity</div>
+                        <div class="info-item-value">{{ resource.capacity }} people</div>
+                    </div>
+                </div>
+                {% endif %}
+
+                <div class="info-item">
+                    <div class="info-item-icon">
+                        <i class="bi bi-shield-check"></i>
+                    </div>
+                    <div class="info-item-content">
+                        <div class="info-item-label">Approval</div>
+                        <div class="info-item-value">
+                            {% if resource.is_restricted %}
+                                Requires Approval
+                            {% else %}
+                                Instant Booking
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="info-item">
+                    <div class="info-item-icon">
+                        <i class="bi bi-calendar-plus"></i>
+                    </div>
+                    <div class="info-item-content">
+                        <div class="info-item-label">Status</div>
+                        <div class="info-item-value">{{ resource.status|capitalize }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

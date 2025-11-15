@@ -1,0 +1,386 @@
+{% extends "layout.html" %}
+{% block title %}Book {{ resource.title }}{% endblock %}
+{% block content %}
+<div class="container py-4">
+    <div class="row g-4">
+        <div class="col-lg-7">
+            <div class="dashboard-card">
+                <h2 class="mb-3">Book "{{ resource.title }}"</h2>
+                {% if resource.is_restricted %}
+                <div class="alert alert-warning d-flex align-items-center gap-2">
+                    <i class="bi bi-shield-lock"></i>
+                    <span>This resource requires owner or staff approval. Your request will be reviewed.</span>
+                </div>
+                {% endif %}
+                {% if waitlist_entries %}
+                <div class="alert alert-info">
+                    <div class="d-flex justify-content-between align-items-start gap-2">
+                        <div>
+                            <i class="bi bi-bell-fill"></i>
+                            You have {{ waitlist_entries|length }} active waitlist {{ 'request' if waitlist_entries|length == 1 else 'requests' }} for this resource.
+                        </div>
+                    </div>
+                    <ul class="list-group list-group-flush mt-3">
+                        {% for entry in waitlist_entries %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center flex-wrap gap-2">
+                            <div>
+                                <div class="fw-semibold">{{ entry.start_datetime|datetime_format }}</div>
+                                <div class="text-muted small">to {{ entry.end_datetime|datetime_format }}</div>
+                            </div>
+                            <form method="POST" action="{{ url_for('booking.cancel_waitlist', entry_id=entry.entry_id) }}" class="ms-auto">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="btn btn-sm btn-outline-danger" data-confirm-delete>
+                                    <i class="bi bi-x-circle"></i> Remove
+                                </button>
+                            </form>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+                <form method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    {% if view_month %}
+                    <input type="hidden" name="view_month" value="{{ view_month }}">
+                    {% endif %}
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="start_datetime" class="form-label">Start date & time *</label>
+                            <input type="datetime-local" class="form-control" id="start_datetime" name="start_datetime"
+                                   value="{{ form_data.get('start_datetime', '') }}" required>
+                            <small class="text-muted">Eastern Time (Bloomington, IN)</small>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="end_datetime" class="form-label">End date & time *</label>
+                            <input type="datetime-local" class="form-control" id="end_datetime" name="end_datetime"
+                                   value="{{ form_data.get('end_datetime', '') }}" required>
+                            <small class="text-muted">Eastern Time (Bloomington, IN)</small>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="recurrence_frequency" class="form-label">Recurrence</label>
+                            {% set recurrence_value = form_data.get('recurrence_frequency', 'none') %}
+                            <select class="form-select" id="recurrence_frequency" name="recurrence_frequency">
+                                <option value="none" {% if recurrence_value == 'none' %}selected{% endif %}>One time</option>
+                                <option value="daily" {% if recurrence_value == 'daily' %}selected{% endif %}>Repeat daily</option>
+                                <option value="weekly" {% if recurrence_value == 'weekly' %}selected{% endif %}>Repeat weekly</option>
+                            </select>
+                            <small class="text-muted">Repeats create a limited series automatically.</small>
+                        </div>
+                    </div>
+                    {% if waitlist_offer %}
+                    <div class="alert alert-warning alert-sticky mt-3" data-autodismiss="false" data-waitlist-offer>
+                        <div class="d-flex gap-3 align-items-start flex-wrap">
+                            <div class="waitlist-offer-icon">
+                                <i class="bi bi-exclamation-triangle text-warning fs-3" aria-hidden="true"></i>
+                            </div>
+                            <div>
+                                <div class="fw-semibold mb-1">
+                                    This time is fully booked.
+                                </div>
+                                <p class="mb-1">
+                                    Join the waitlist to be automatically booked if the reservation from {{ waitlist_offer.start_display }} to {{ waitlist_offer.end_display }} becomes available.
+                                </p>
+                                <p class="small mb-3 text-muted">
+                                    We notify you via email and convert the request instantly once the slot opens up.
+                                </p>
+                                <div class="d-flex flex-wrap gap-2 align-items-center">
+                                    <button type="submit" class="btn btn-outline-primary" name="request_action" value="waitlist">
+                                        <i class="bi bi-bell"></i> Join Waitlist
+                                    </button>
+                                    <button type="button" class="btn btn-link text-decoration-none px-0" data-waitlist-adjust>
+                                        Prefer a different time? Adjust your selection
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    <div class="mt-4 d-flex flex-wrap gap-2">
+                        <button type="submit" class="btn btn-primary" name="request_action" value="book">
+                            <i class="bi bi-calendar-check"></i> Submit Booking
+                        </button>
+                        <a href="{{ url_for('resource.detail', resource_id=resource.resource_id) }}" class="btn btn-outline-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+        <div class="col-lg-5">
+            <div class="dashboard-card mb-4">
+                <div class="calendar-header">
+                    <a href="{{ url_for('booking.create', resource_id=resource.resource_id, view_month=prev_month) }}"
+                       class="calendar-nav-btn" aria-label="Previous month">
+                        <i class="bi bi-chevron-left"></i>
+                    </a>
+                    <h5 class="calendar-month-title">{{ calendar_label }}</h5>
+                    <a href="{{ url_for('booking.create', resource_id=resource.resource_id, view_month=next_month) }}"
+                       class="calendar-nav-btn" aria-label="Next month">
+                        <i class="bi bi-chevron-right"></i>
+                    </a>
+                </div>
+                <table class="table text-center calendar-table mb-0">
+                    <thead>
+                        <tr>
+                            <th>Sun</th>
+                            <th>Mon</th>
+                            <th>Tue</th>
+                            <th>Wed</th>
+                            <th>Thu</th>
+                            <th>Fri</th>
+                            <th>Sat</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for week in calendar_rows %}
+                        <tr>
+                            {% for day in week %}
+                            {% set is_today = day.is_today|default(false) %}
+                            {% set density_class = '' %}
+                            {% if day.booking_count %}
+                                {% if day.booking_count == 1 %}
+                                    {% set density_class = 'calendar-day-low' %}
+                                {% elif day.booking_count == 2 %}
+                                    {% set density_class = 'calendar-day-medium' %}
+                                {% else %}
+                                    {% set density_class = 'calendar-day-high' %}
+                                {% endif %}
+                            {% endif %}
+                            <td class="{% if not day.in_month %}calendar-out-month{% endif %} {% if is_today %}calendar-today{% endif %} {{ density_class }} calendar-day-cell"
+                                data-date="{{ day.date.strftime('%Y-%m-%d') }}"
+                                title="{% if day.booking_count %}{{ day.booking_count }} booking(s) on this day - Click to view{% else %}No bookings{% endif %}">
+                                <div class="calendar-day">
+                                    <span class="calendar-day-number">{{ day.date.day }}</span>
+                                    {% if day.booking_count %}
+                                    <div class="calendar-booking-indicator">
+                                        <span class="calendar-booking-count">
+                                            <i class="bi bi-calendar-check"></i>
+                                            {{ day.booking_count }}
+                                        </span>
+                                    </div>
+                                    {% endif %}
+                                    <div class="calendar-day-status"></div>
+                                </div>
+                            </td>
+                            {% endfor %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                <div class="calendar-legend">
+                    <div class="calendar-legend-item">
+                        <span class="calendar-legend-dot calendar-legend-today"></span>
+                        <span>Today</span>
+                    </div>
+                    <div class="calendar-legend-item">
+                        <span class="calendar-legend-bar calendar-legend-available"></span>
+                        <span>Low (1 booking)</span>
+                    </div>
+                    <div class="calendar-legend-item">
+                        <span class="calendar-legend-bar calendar-legend-moderate"></span>
+                        <span>Moderate (2 bookings)</span>
+                    </div>
+                    <div class="calendar-legend-item">
+                        <span class="calendar-legend-bar calendar-legend-busy"></span>
+                        <span>Busy (3+ bookings)</span>
+                    </div>
+                </div>
+            </div>
+            <div class="dashboard-card">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="mb-0"><i class="bi bi-clock-history"></i> <span id="bookings-title">All Booked Times</span></h5>
+                    <button id="clear-filter" class="btn btn-sm btn-outline-secondary" style="display: none;">
+                        <i class="bi bi-x-circle"></i> Show All
+                    </button>
+                </div>
+
+                {% if upcoming_bookings %}
+                <div class="booking-stats-panel">
+                    <div class="booking-stats-grid">
+                        <div class="booking-stat-item">
+                            <span class="booking-stat-value" id="total-count">{{ upcoming_bookings|length }}</span>
+                            <span class="booking-stat-label">Total</span>
+                        </div>
+                        <div class="booking-stat-item">
+                            <span class="booking-stat-value" id="pending-count">{{ upcoming_bookings|selectattr('status', 'equalto', 'pending')|list|length }}</span>
+                            <span class="booking-stat-label">Pending</span>
+                        </div>
+                        <div class="booking-stat-item">
+                            <span class="booking-stat-value" id="approved-count">{{ upcoming_bookings|selectattr('status', 'equalto', 'approved')|list|length }}</span>
+                            <span class="booking-stat-label">Approved</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="bookings-container">
+                    {% for booking in upcoming_bookings %}
+                    <div class="upcoming-reservation-item booking-item" data-booking-date="{{ booking.start_datetime[:10] }}">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <div class="reservation-date">
+                                <i class="bi bi-calendar-event"></i>
+                                <span>{{ booking.start_datetime|datetime_format }}</span>
+                            </div>
+                            <span class="badge status-{{ booking.status }}">{{ booking.status|upper }}</span>
+                        </div>
+                        <div class="reservation-time mb-2">
+                            <i class="bi bi-arrow-right"></i>
+                            <span>{{ booking.end_datetime|datetime_format }}</span>
+                        </div>
+                        {% if current_user.role in ['staff', 'admin'] %}
+                        <div class="reservation-user">
+                            <i class="bi bi-person-fill"></i>
+                            <span class="text-muted small">Booked by: <strong>{{ booking.requester_name|default('Unknown') }}</strong></span>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <div id="no-bookings-message" class="empty-state" style="display: none;">
+                    <i class="bi bi-calendar-x"></i>
+                    <p class="mb-0">No bookings for this day.</p>
+                </div>
+                {% else %}
+                <div class="empty-state">
+                    <i class="bi bi-calendar-x"></i>
+                    <p class="mb-0">No bookings yet. Great time to reserve!</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const calendarDays = document.querySelectorAll('.calendar-day-cell');
+    const bookingItems = document.querySelectorAll('.booking-item');
+    const bookingsTitle = document.getElementById('bookings-title');
+    const clearFilterBtn = document.getElementById('clear-filter');
+    const noBookingsMessage = document.getElementById('no-bookings-message');
+    const bookingsContainer = document.getElementById('bookings-container');
+    const totalCount = document.getElementById('total-count');
+    const pendingCount = document.getElementById('pending-count');
+    const approvedCount = document.getElementById('approved-count');
+
+    let selectedDay = null;
+
+    // Add click handler to each calendar day
+    calendarDays.forEach(day => {
+        day.addEventListener('click', function() {
+            const date = this.dataset.date;
+
+            // Remove previous selection
+            if (selectedDay) {
+                selectedDay.classList.remove('calendar-day-selected');
+            }
+
+            // Select new day
+            this.classList.add('calendar-day-selected');
+            selectedDay = this;
+
+            // Filter bookings
+            filterBookingsByDate(date);
+
+            // Update title
+            const dateObj = new Date(date + 'T12:00:00');
+            const formattedDate = dateObj.toLocaleDateString('en-US', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+            bookingsTitle.textContent = `Booked Times on ${formattedDate}`;
+
+            // Show clear button
+            clearFilterBtn.style.display = 'inline-block';
+        });
+    });
+
+    // Clear filter button
+    clearFilterBtn.addEventListener('click', function() {
+        if (selectedDay) {
+            selectedDay.classList.remove('calendar-day-selected');
+            selectedDay = null;
+        }
+
+        // Show all bookings
+        bookingItems.forEach(item => {
+            item.style.display = 'block';
+        });
+
+        // Hide no bookings message
+        noBookingsMessage.style.display = 'none';
+        bookingsContainer.style.display = 'block';
+
+        // Reset title
+        bookingsTitle.textContent = 'All Booked Times';
+
+        // Hide clear button
+        clearFilterBtn.style.display = 'none';
+
+        // Reset counts
+        updateCounts();
+    });
+
+    function filterBookingsByDate(date) {
+        let visibleCount = 0;
+        let pendingVisible = 0;
+        let approvedVisible = 0;
+
+        bookingItems.forEach(item => {
+            const bookingDate = item.dataset.bookingDate;
+
+            if (bookingDate === date) {
+                item.style.display = 'block';
+                visibleCount++;
+
+                // Count status
+                const statusBadge = item.querySelector('.badge');
+                if (statusBadge) {
+                    const status = statusBadge.textContent.trim().toLowerCase();
+                    if (status === 'pending') pendingVisible++;
+                    if (status === 'approved') approvedVisible++;
+                }
+            } else {
+                item.style.display = 'none';
+            }
+        });
+
+        // Update counts
+        totalCount.textContent = visibleCount;
+        pendingCount.textContent = pendingVisible;
+        approvedCount.textContent = approvedVisible;
+
+        // Show/hide no bookings message
+        if (visibleCount === 0) {
+            bookingsContainer.style.display = 'none';
+            noBookingsMessage.style.display = 'block';
+        } else {
+            bookingsContainer.style.display = 'block';
+            noBookingsMessage.style.display = 'none';
+        }
+    }
+
+    function updateCounts() {
+        let total = 0;
+        let pending = 0;
+        let approved = 0;
+
+        bookingItems.forEach(item => {
+            if (item.style.display !== 'none') {
+                total++;
+                const statusBadge = item.querySelector('.badge');
+                if (statusBadge) {
+                    const status = statusBadge.textContent.trim().toLowerCase();
+                    if (status === 'pending') pending++;
+                    if (status === 'approved') approved++;
+                }
+            }
+        });
+
+        totalCount.textContent = total;
+        pendingCount.textContent = pending;
+        approvedCount.textContent = approved;
+    }
+});
+</script>
+{% endblock %}
